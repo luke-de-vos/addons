@@ -101,7 +101,7 @@ function SWEP:ThrowProp(model_file, force_mult, prop_duration)
 	-- aiming, positioning
 	local aimvec = owner:GetAimVector()
 	local spawn_pos = owner:EyePos()
-	spawn_pos.z = spawn_pos.z -10-- lower below eye level
+	spawn_pos.z = spawn_pos.z - 10 -- lower below eye level
 	spawn_pos:Add((aimvec * 32))
 	magic_prop:SetPos(spawn_pos)
 	magic_prop:SetAngles(owner:EyeAngles())

@@ -1,5 +1,4 @@
 print("Executed lua: " .. debug.getinfo(1,'S').source)
-local addon_hooks = {} -- populated with tuples containing type and name of hooks. These are referenced to remove appropriate hooks when addon is disabled
 
 -- config
 local MULTI_WINDOW = 4 -- max seconds between kills to get multikill
@@ -14,35 +13,27 @@ end
 if SERVER then
 	AddCSLuaFile()
 	util.AddNetworkString("multi_popup")
-	addon_hooks = {} -- reset
 
-	local lastKill = {} -- maps player names to time of last kill
-	local multi = {} -- maps player names to multikill count
-	local streak = {} -- maps player names to num kills since last death
+	local lastKill = {} -- maps player steam IDs to time of last kill
+	local multi = {} -- maps player steam IDs to multikill count
+	local streak = {} -- maps player steam IDs to num kills since last death
 
 	-- on spawn, reset kill trackers, gain and equip weapons
-	table.insert(addon_hooks, {"PlayerSpawn", "multi_PlayerSpawn"})
 	hook.Add("PlayerSpawn", "multi_PlayerSpawn", function(ply, transition) 
-	
-		lastKill[ply:GetName()] = 0
-		multi[ply:GetName()] = 0
-		streak[ply:GetName()] = 0
-		
+		lastKill[ply:GetSteamID()] = 0
+		multi[ply:GetSteamID()] = 0
+		streak[ply:GetSteamID()] = 0
 	end)
 	
 	-- Kill tracking. Streaks, multis
-	table.insert(addon_hooks, {"PlayerDeath", "multi_PlayerDeath"})
 	hook.Add("PlayerDeath", "multi_PlayerDeath", function(victim, inflictor, attacker) -- (Player, Entity, Entity)
 	
-		streak[victim:GetName()] = 0
-	
+		streak[victim:GetSteamID()] = 0
+
 		if (attacker:IsPlayer()) then 
-				
-			local att = attacker:GetName()
-			local vic = victim:GetName()
-			
+			local att = attacker:GetSteamID()
+			local vic = victim:GetSteamID()
 			if att ~= vic then
-		
 				--streak
 				streak[att] = streak[att] + 1
 				if (streak[att] % 5 == 0) then
@@ -61,14 +52,10 @@ if SERVER then
 					multi[att] = 0
 				end
 				lastKill[att] = CurTime()
-				
 			end
-			
 		end
-	
 	end)
 end
-
 
 if CLIENT then
 	net.Receive("multi_popup", function()
