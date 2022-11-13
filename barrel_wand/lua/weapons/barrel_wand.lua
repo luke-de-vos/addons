@@ -56,7 +56,7 @@ local next_barrel_hot = false -- when true, next ThrowProp() call throws a "hot 
 function SWEP:Reload()
 	if not next_barrel_hot then
 		if self:GetOwner():GetAmmoCount(self.Primary.Ammo) >= HOT_BARREL_COST then
-			self:EmitSound(self.ReloadSound)
+			--self:EmitSound(self.ReloadSound)
 			self:TakePrimaryAmmo(HOT_BARREL_COST)
 			next_barrel_hot = true
 		end
