@@ -50,7 +50,7 @@ SWEP.HoldType = "melee" -- https://wiki.facepunch.com/gmod/Hold_Types
 local WAND_PROP_PREFIX = "WP"
 local PREFIX_LEN = string.len(WAND_PROP_PREFIX)
 local HOT_BARREL_STR = WAND_PROP_PREFIX.."hot_barrel"
-local HOT_BARREL_COST = 1
+local HOT_BARREL_COST = 5
 
 local next_barrel_hot = false -- when true, next ThrowProp() call throws a "hot barrel" and sets false
 function SWEP:Reload()
