@@ -20,19 +20,19 @@ if SERVER then
 
 	-- on spawn, reset kill trackers, gain and equip weapons
 	hook.Add("PlayerSpawn", "multi_PlayerSpawn", function(ply, transition) 
-		lastKill[ply:GetSteamID()] = 0
-		multi[ply:GetSteamID()] = 0
-		streak[ply:GetSteamID()] = 0
+		lastKill[ply:SteamID()] = 0
+		multi[ply:SteamID()] = 0
+		streak[ply:SteamID()] = 0
 	end)
 	
 	-- Kill tracking. Streaks, multis
 	hook.Add("PlayerDeath", "multi_PlayerDeath", function(victim, inflictor, attacker) -- (Player, Entity, Entity)
 	
-		streak[victim:GetSteamID()] = 0
+		streak[victim:SteamID()] = 0
 
 		if (attacker:IsPlayer()) then 
-			local att = attacker:GetSteamID()
-			local vic = victim:GetSteamID()
+			local att = attacker:SteamID()
+			local vic = victim:SteamID()
 			if att ~= vic then
 				--streak
 				streak[att] = streak[att] + 1
