@@ -164,7 +164,6 @@ if SERVER then
         end
     end 
 
-    --unused
     function _change_mode(mode_hooks)
         _drop_hooks()
         for func in mode_hooks do
@@ -172,7 +171,6 @@ if SERVER then
         end
     end
     
-
     function _add_hook(hook_type, hook_name, hook_func)
         table.insert(mode_hooks, {hook_type, hook_name})
         hook.Add(hook_type, hook_name, hook_func)
