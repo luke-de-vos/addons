@@ -1,8 +1,6 @@
 AddCSLuaFile()
 
 if SERVER then
-	--resource.AddFile("materials/VGUI/ttt/icon_posswitch.vmt")
-	--resource.AddFile("materials/VGUI/ttt/icon_posswitch.vtf")
 	resource.AddFile("materials/VGUI/ttt/icon_barrel_wand.jpg")
 end
 
