@@ -2,8 +2,6 @@ print("Executed lua: " .. debug.getinfo(1,'S').source)
 
 if SERVER then
 
-    GF={} -- Global Functions
-
     -- UTILITY
     function _normalize_vec(vec, new_hi)
         local new_vec = Vector(0,0,0)
