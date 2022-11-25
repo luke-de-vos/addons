@@ -52,7 +52,7 @@ function SWEP:PrimaryAttack()
 		if IsValid(target_ent) and not target_ent:IsPlayer() then
 			target_ent:SetPhysicsAttacker(self:GetOwner(), 3)
 			sic(target_ent)
-			-- check if it moved. if it moved, take ammo
+			-- check if it moved. if it moved, take ammos
 			start_pos = target_ent:GetPos()
 			timer.Simple(0.1, function()
 				if target_ent:GetPos() != start_pos then
