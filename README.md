@@ -6,10 +6,11 @@ Functions that begin with an underscore are defined in aa_global_funcs.
 
 ### TODO
 
-- Prop Siccer: should only target innos. Avoid jester etc
-- Barrel Wand: right click parry?
+- Prop Siccer
+    - should only target innos. Avoid jester etc
+    - primary attack marks prop and consumes ammo. R sics all marked props
 - aa_global_funcs: vector normalization for propulsion should not necessarily result in a max value of 1. Normalizing like that will make propulsion in ordinal directions stronger than cardinal directions.
-- switch golden deag to pistol slot
+- switch golden deag to primary slot
     - need to download and extract first
     
 ### IDEAS
