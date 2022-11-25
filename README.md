@@ -7,13 +7,11 @@ Functions that begin with an underscore are defined in aa_global_funcs.
 ### TODO
 
 - Prop Siccer: should only target innos. Avoid jester etc
-- Barrel Wand: special barrel is broken. next_barrel_hot bool is shared between players
+- Barrel Wand: right click parry?
 - aa_global_funcs: vector normalization for propulsion should not necessarily result in a max value of 1. Normalizing like that will make propulsion in ordinal directions stronger than cardinal directions.
 - switch golden deag to pistol slot
     - need to download and extract first
-
-### IDEAS
-
+    
 - glue trap
     - roots player for a few seconds
     - visible?
