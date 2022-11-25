@@ -66,7 +66,7 @@ function SWEP:PrimaryAttack()
 	self:SetNextPrimaryFire(CurTime() + 0.75)
 	self:SetNextSecondaryFire(CurTime() + 0.25)
 	if is_hot then
-		self:EmitSound("Weapon_PhysCannon.Launch", 100, 85)
+		self:EmitSound("Weapon_PhysCannon.Launch", 100, 100)
 	end	
 	self:EmitSound(self.ShootSound)
 	self:ThrowProp("models/props_c17/oildrum001.mdl", 175000, 5, is_hot, 1.0)
