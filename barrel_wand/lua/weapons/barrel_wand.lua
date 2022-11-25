@@ -61,6 +61,7 @@ end
 function SWEP:PrimaryAttack()
 	if self:GetOwner():GetAmmoCount(self.Primary.Ammo) >= HOT_BARREL_COST then
 		self.IsHot = true
+		self:EmitSound("Weapon_PhysCannon.Launch", 100, 100)
 		self:TakePrimaryAmmo(HOT_BARREL_COST)
 	end
 	self.Weapon:SendWeaponAnim( ACT_VM_MISSCENTER )
@@ -98,7 +99,6 @@ function SWEP:ThrowProp(model_file, force_mult, prop_duration, weight_mult)
 	if self.IsHot then
 		magic_prop:SetName(HOT_BARREL_STR)
 		magic_prop:SetColor(Color(255,0,0))
-		self:EmitSound("Weapon_PhysCannon.Launch", 100, 100)
 	else
 		magic_prop:SetName(MY_BARREL_STR)
 		magic_prop:SetColor(Color(255,150,150))
