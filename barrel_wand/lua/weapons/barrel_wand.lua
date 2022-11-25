@@ -65,14 +65,22 @@ function SWEP:PrimaryAttack()
 	end
 	self.Weapon:SendWeaponAnim( ACT_VM_MISSCENTER )
 	self:SetNextPrimaryFire(CurTime() + 0.75)
-	self:SetNextSecondaryFire(CurTime() + 0.25)
+	self:SetNextSecondaryFire(CurTime() + 0.75)
 	self:EmitSound(self.ShootSound)
 	self:ThrowProp("models/props_c17/oildrum001.mdl", 175000, 5, 1.0)
 	self.IsHot = false
 end
 
 function SWEP:SecondaryAttack()
-	
+	if CLIENT then end
+	self:SetNextSecondaryFire(CurTime() + 1.5)
+	self:SetNextPrimaryFire(CurTime() + 0.75)
+	self.Weapon:SendWeaponAnim( ACT_VM_MISSCENTER )	
+	self:GetOwner():SetVelocity(self:GetOwner():GetAimVector() * 500)
+
+	-- sound and visual
+	if SERVER then _spark(self:GetOwner():GetPos()+Vector(0,0,40)) end
+	self:EmitSound("Grenade.Blip", 50, 100)
 end
 
 function SWEP:ThrowProp(model_file, force_mult, prop_duration, weight_mult)
