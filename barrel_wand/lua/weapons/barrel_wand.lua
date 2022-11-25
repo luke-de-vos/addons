@@ -52,36 +52,30 @@ local PREFIX_LEN = string.len(WAND_PROP_PREFIX)
 local HOT_BARREL_STR = WAND_PROP_PREFIX.."hot_barrel"
 local HOT_BARREL_COST = 5
 
+SWEP.IsHot = false
+
 function SWEP:Reload()
 	
 end
 
 function SWEP:PrimaryAttack()
-	local is_hot = false
 	if self:GetOwner():GetAmmoCount(self.Primary.Ammo) >= HOT_BARREL_COST then
-		is_hot = true
+		self.IsHot = true
 		self:TakePrimaryAmmo(HOT_BARREL_COST)
 	end
 	self.Weapon:SendWeaponAnim( ACT_VM_MISSCENTER )
 	self:SetNextPrimaryFire(CurTime() + 0.75)
 	self:SetNextSecondaryFire(CurTime() + 0.25)
-	if is_hot then
-		self:EmitSound("Weapon_PhysCannon.Launch", 100, 100)
-	end	
 	self:EmitSound(self.ShootSound)
-	self:ThrowProp("models/props_c17/oildrum001.mdl", 175000, 5, is_hot, 1.0)
+	self:ThrowProp("models/props_c17/oildrum001.mdl", 175000, 5, 1.0)
+	self.IsHot = false
 end
 
 function SWEP:SecondaryAttack()
-	self.Weapon:SendWeaponAnim( ACT_VM_MISSCENTER )
-	self:SetNextSecondaryFire(CurTime() + 0.75)
-	self:SetNextPrimaryFire(CurTime() + 0.25)
-	self:EmitSound(self.ShootSound)
-	self:ThrowProp("models/props_c17/oildrum001.mdl", 20000, 5, false, 50.0)
 	
 end
 
-function SWEP:ThrowProp(model_file, force_mult, prop_duration, is_hot, weight_mult)
+function SWEP:ThrowProp(model_file, force_mult, prop_duration, weight_mult)
 	local owner = self:GetOwner()
 	if not owner:IsValid() then return end
 	if CLIENT then return end
@@ -93,9 +87,10 @@ function SWEP:ThrowProp(model_file, force_mult, prop_duration, is_hot, weight_mu
 	-- name, model
 	local MY_BARREL_STR = WAND_PROP_PREFIX..self:GetOwner():SteamID()
 	magic_prop:SetModel(model_file)
-	if is_hot then
+	if self.IsHot then
 		magic_prop:SetName(HOT_BARREL_STR)
 		magic_prop:SetColor(Color(255,0,0))
+		self:EmitSound("Weapon_PhysCannon.Launch", 100, 100)
 	else
 		magic_prop:SetName(MY_BARREL_STR)
 		magic_prop:SetColor(Color(255,150,150))
@@ -133,7 +128,7 @@ function SWEP:ThrowProp(model_file, force_mult, prop_duration, is_hot, weight_mu
 
 	-- spawn
 	magic_prop:Spawn()
-	if is_hot then 
+	if self.IsHot then 
 		magic_prop:Ignite(prop_duration, 100) 
 	end
 	local phys = magic_prop:GetPhysicsObject()
