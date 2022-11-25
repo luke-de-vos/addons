@@ -52,35 +52,38 @@ local PREFIX_LEN = string.len(WAND_PROP_PREFIX)
 local HOT_BARREL_STR = WAND_PROP_PREFIX.."hot_barrel"
 local HOT_BARREL_COST = 5
 
-local next_barrel_hot = false -- when true, next ThrowProp() call throws a "hot barrel" and sets false
 function SWEP:Reload()
-	if not next_barrel_hot then
-		if self:GetOwner():GetAmmoCount(self.Primary.Ammo) >= HOT_BARREL_COST then
-			--self:EmitSound(self.ReloadSound)
-			self:TakePrimaryAmmo(HOT_BARREL_COST)
-			next_barrel_hot = true
-		end
-	end
+	
 end
 
 function SWEP:PrimaryAttack()
+	local is_hot = false
+	if self:GetOwner():GetAmmoCount(self.Primary.Ammo) >= HOT_BARREL_COST then
+		is_hot = true
+		self:TakePrimaryAmmo(HOT_BARREL_COST)
+	end
 	self.Weapon:SendWeaponAnim( ACT_VM_MISSCENTER )
 	self:SetNextPrimaryFire(CurTime() + 0.75)
 	self:SetNextSecondaryFire(CurTime() + 0.25)
-	self:ThrowProp("models/props_c17/oildrum001.mdl", 175000, 5, next_barrel_hot)
+	if is_hot then
+		self:EmitSound("Weapon_PhysCannon.Launch", 100, 85)
+	end	
+	self:EmitSound(self.ShootSound)
+	self:ThrowProp("models/props_c17/oildrum001.mdl", 175000, 5, is_hot, 1.0)
 end
 
 function SWEP:SecondaryAttack()
 	self.Weapon:SendWeaponAnim( ACT_VM_MISSCENTER )
 	self:SetNextSecondaryFire(CurTime() + 0.75)
 	self:SetNextPrimaryFire(CurTime() + 0.25)
-	self:ThrowProp("models/props_c17/oildrum001.mdl", 32000, 5, next_barrel_hot)
+	self:EmitSound(self.ShootSound)
+	self:ThrowProp("models/props_c17/oildrum001.mdl", 20000, 5, false, 50.0)
+	
 end
 
-function SWEP:ThrowProp(model_file, force_mult, prop_duration)
+function SWEP:ThrowProp(model_file, force_mult, prop_duration, is_hot, weight_mult)
 	local owner = self:GetOwner()
 	if not owner:IsValid() then return end
-	self:EmitSound(self.ShootSound)
 	if CLIENT then return end
 
 	-- prop declaration
@@ -90,7 +93,7 @@ function SWEP:ThrowProp(model_file, force_mult, prop_duration)
 	-- name, model
 	local MY_BARREL_STR = WAND_PROP_PREFIX..self:GetOwner():SteamID()
 	magic_prop:SetModel(model_file)
-	if next_barrel_hot then
+	if is_hot then
 		magic_prop:SetName(HOT_BARREL_STR)
 		magic_prop:SetColor(Color(255,0,0))
 	else
@@ -130,15 +133,14 @@ function SWEP:ThrowProp(model_file, force_mult, prop_duration)
 
 	-- spawn
 	magic_prop:Spawn()
-	if next_barrel_hot then 
+	if is_hot then 
 		magic_prop:Ignite(prop_duration, 100) 
-		next_barrel_hot = false
 	end
 	local phys = magic_prop:GetPhysicsObject()
 	if not IsValid(phys) then magic_prop:Remove() return end
  
 	-- propulsion
-	phys:SetMass(60)
+	phys:SetMass(60*weight_mult)
 	local impulse = aimvec * phys:GetMass() * force_mult
 	--aimvec:Add( VectorRand( -10, 10 ) ) -- Add a random vector with elements [-10, 10)
 	phys:ApplyForceCenter(impulse * engine.TickInterval()) 
