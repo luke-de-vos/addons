@@ -34,6 +34,7 @@ if SERVER then
 			timer.Simple(0.1, function()
 				ply:Give("awpv2")
 				ply:Give("weapon_ttt_deaglev2")
+				ply:Give("barrel_wand")
 				if last_wep ~= nil then ply:Give(last_wep) end
 			end)
 			-- equip weapon
