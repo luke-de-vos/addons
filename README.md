@@ -12,6 +12,7 @@ Functions that begin with an underscore are defined in aa_global_funcs.
 - switch golden deag to pistol slot
     - need to download and extract first
     
+### IDEAS
 - glue trap
     - roots player for a few seconds
     - visible?
