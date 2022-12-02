@@ -3,6 +3,24 @@ print("Executed lua: " .. debug.getinfo(1,'S').source)
 if SERVER then
 
     -- UTILITY
+    function _get_roles()
+        local role_counts = {0,0,0,0}
+        local role_index = nil
+        for i,ply in ipairs(player.GetAll()) do
+            role_index = ply:GetRole() + 1
+            if role_index > 4 then
+                role_index = 4
+            end
+            role_counts[role_index] = role_counts[role_index] + 1
+        end
+        local role_names = {'inno','traitor','detective', 'misc'}
+        for role_index, count in ipairs(role_counts) do
+            print(role_names[role_index]..': '..count)
+        end
+    end
+
+    _get_roles()
+
     function _normalize_vec(vec, new_hi)
         local new_vec = Vector(0,0,0)
         local max = math.max(unpack({math.abs(vec.x), math.abs(vec.y), math.abs(vec.z)}))
