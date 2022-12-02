@@ -27,8 +27,16 @@ if SERVER then
 		local died_with = {}  -- track what weapon player died with. Equip that weapon on spawn
 		
 		-- HOOKS
+		-- assign innocent role to every player
+		_add_hook("TTTBeginRound", "ffa_ForceRole", function()
+			for i,ply in ipairs(player.GetAll()) do
+				ply:SetRole(0)
+			end
+		end)
+
 		-- on spawn: reset kill trackers, gain and equip weapons
 		_add_hook("PlayerSpawn", "ffa_PlayerSpawn", function(ply, transition) 
+			ply:SetRole(0)
 			local last_wep = died_with[ply:UserID()]
 			-- give weapon
 			timer.Simple(0.1, function()

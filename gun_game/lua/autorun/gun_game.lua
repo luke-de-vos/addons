@@ -101,8 +101,16 @@ if SERVER then
 		RunConsoleCommand("ulx", "roundrestart")
 		
 		-- HOOKS
+		-- assign innocent role to every player
+		_add_hook("TTTBeginRound", "ffa_ForceRole", function()
+			for i,ply in ipairs(player.GetAll()) do
+				ply:SetRole(0)
+			end
+		end)
+		
 		-- on respawn: equip current gun game weapon
 		_add_hook("PlayerSpawn", "gun_game_spawn", function(ply, transition)
+			ply:SetRole(0)
 			update_weapon(ply, guns, kills_to_win)
 		end)
 
