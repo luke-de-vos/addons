@@ -27,10 +27,10 @@ if SERVER then
 		ply:SetWalkSpeed(250) -- set movement speed to default
 		
 		local gungame_gun = nil
-		if ply:Frags() == kills_to_win-1 then -- last kill always crowbar
+		if ply:Frags() >= kills_to_win-1 then -- last kill always crowbar
 			gungame_gun = "weapon_zm_improvised"
 		else
-			gungame_gun = guns[(ply:Frags()%#guns)+1] -- lua tables index beginning at 1
+			gungame_gun = guns[(ply:Frags()%#guns)+1] -- +1 bc lua tables indices begin at 1
 		end
 		if gungame_gun == nil then
 			return 0
@@ -97,31 +97,31 @@ if SERVER then
 		end
 		RunConsoleCommand("ttt_roundtime_minutes", GUN_GAME_ROUND_LEN)
 		RunConsoleCommand("ttt_debug_preventwin", "1")
-		RunConsoleCommand("ttt_preptime_seconds", "5")
+		RunConsoleCommand("ttt_preptime_seconds", "2")
 		RunConsoleCommand("ulx", "roundrestart")
 		
 		-- HOOKS
 		-- assign innocent role to every player
-		_add_hook("TTTBeginRound", "ffa_ForceRole", function()
+		_add_hook("TTTBeginRound", "gg_ForceRole", function()
 			for i,ply in ipairs(player.GetAll()) do
 				ply:SetRole(0)
 			end
 		end)
-		
+
 		-- on respawn: equip current gun game weapon
-		_add_hook("PlayerSpawn", "gun_game_spawn", function(ply, transition)
+		_add_hook("PlayerSpawn", "gg_spawn", function(ply, transition)
 			ply:SetRole(0)
 			update_weapon(ply, guns, kills_to_win)
 		end)
 
 		-- on pre-kill: victim does not drop weapon, player moves onto next weapon or wins
-		_add_hook("DoPlayerDeath", "gun_game_advancement", function(victim, attacker, dmgInfo)
+		_add_hook("DoPlayerDeath", "gg_advancement", function(victim, attacker, dmgInfo)
 			if victim:GetActiveWeapon():IsValid() then
 				victim:GetActiveWeapon():Remove()
 			end
 			if attacker:IsPlayer() and attacker ~= victim then
 				attacker:AddFrags(1)
-				if attacker:Frags() >= kills_to_win then
+				if dmgInfo:GetInflictor():IsWeapon() and dmgInfo:GetInflictor():GetPrintName() == "weapon_zm_improvised" then
 					if !someone_already_won then
 						someone_already_won = true
 						PrintMessage(HUD_PRINTCENTER, attacker:GetName().." wins!")
@@ -135,7 +135,7 @@ if SERVER then
 		end)
 
 		-- on kill: play headshot effect, print killfeed, begin respawn
-		_add_hook("PlayerDeath", "gun_game_PlayerDeath", function(victim, inflictor, attacker)
+		_add_hook("PlayerDeath", "gg_PlayerDeath", function(victim, inflictor, attacker)
 			if (attacker:IsPlayer()) then
 				if victim:LastHitGroup() == 1 then
 					_headshot_effect(victim)
