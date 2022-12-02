@@ -1,4 +1,10 @@
 AddCSLuaFile()
+print("Executed lua: " .. debug.getinfo(1,'S').source)
+
+resource.AddFile("sound/body_medium_impact_hard6.wav")
+resource.AddFile("sound/body_medium_impact_hard4.wav")
+resource.AddFile("sound/body_medium_impact_hard5.wav")
+
 
 if SERVER then
 	resource.AddFile("materials/VGUI/ttt/icon_barrel_wand.jpg")
@@ -17,7 +23,7 @@ if CLIENT then
 	SWEP.PrintName		=	"Barrel Wand"
 	SWEP.Slot			=	7
 	SWEP.Icon 			=	"VGUI/ttt/icon_barrel_wand.jpg"
-	SWEP.DrawAmmo		=	false 
+	SWEP.DrawAmmo		=	true 
 	SWEP.DrawCrosshair	=	false -- ttt2 draws crosshair
 	
 	SWEP.ViewModelFlip       = false
@@ -35,10 +41,10 @@ SWEP.Primary.DefaultClip	= 0
 SWEP.Primary.Automatic		= true
 SWEP.Primary.Ammo		= "RPG_Round"
 
-SWEP.Secondary.ClipSize		= -1
-SWEP.Secondary.DefaultClip	= -1
+SWEP.Secondary.ClipSize		= 2
+SWEP.Secondary.DefaultClip	= 2
 SWEP.Secondary.Automatic	= true
-SWEP.Secondary.Ammo		= "none"
+SWEP.Secondary.Ammo		= "RPG_Round"
 
 SWEP.Kind                   = WEAPON_EQUIP2
 SWEP.CanBuy                 = {ROLE_TRAITOR, ROLE_INNOCENT, ROLE_DETECTIVE}
@@ -47,12 +53,29 @@ SWEP.WeaponID               = BARREL_WAND
 
 SWEP.HoldType = "melee" -- https://wiki.facepunch.com/gmod/Hold_Types
 
+SWEP.IsHot = false
+
 local WAND_PROP_PREFIX = "WP"
 local PREFIX_LEN = string.len(WAND_PROP_PREFIX)
 local HOT_BARREL_STR = WAND_PROP_PREFIX.."hot_barrel"
 local HOT_BARREL_COST = 5
 
-SWEP.IsHot = false
+local SMACK_SOUNDS = {
+	"body_medium_impact_hard5.wav",
+	"body_medium_impact_hard4.wav",
+	"body_medium_impact_hard6.wav"
+	}
+local HOT_PROPS = {
+	--"models/props_interiors/Furniture_Couch01a.mdl",
+	--"models/props_c17/FurnitureChair001a.mdl",
+	--"models/props_c17/FurnitureWashingmachine001a.mdl",
+	--"models/props_c17/chair02a.mdl",
+	--"models/props_lab/filecabinet02.mdl",
+	--"models/props_junk/watermelon01.mdl",
+	"models/props_lab/huladoll.mdl",
+	--"models/props_junk/Wheebarrow01a.mdl"
+	}
+
 
 function SWEP:Reload()
 	
@@ -75,7 +98,7 @@ end
 function SWEP:SecondaryAttack()
 	if CLIENT then end
 	self:SetNextSecondaryFire(CurTime() + 1.5)
-	self:SetNextPrimaryFire(CurTime() + 0.75)
+	self:SetNextPrimaryFire(CurTime() + 0.25)
 	self.Weapon:SendWeaponAnim( ACT_VM_MISSCENTER )	
 	self:GetOwner():SetVelocity(self:GetOwner():GetAimVector() * 500)
 
@@ -95,11 +118,12 @@ function SWEP:ThrowProp(model_file, force_mult, prop_duration, weight_mult)
 
 	-- name, model
 	local MY_BARREL_STR = WAND_PROP_PREFIX..self:GetOwner():SteamID()
-	magic_prop:SetModel(model_file)
 	if self.IsHot then
+		magic_prop:SetModel(HOT_PROPS[math.random(#HOT_PROPS)])
 		magic_prop:SetName(HOT_BARREL_STR)
 		magic_prop:SetColor(Color(255,0,0))
 	else
+		magic_prop:SetModel(model_file)
 		magic_prop:SetName(MY_BARREL_STR)
 		magic_prop:SetColor(Color(255,150,150))
 	end
@@ -125,8 +149,10 @@ function SWEP:ThrowProp(model_file, force_mult, prop_duration, weight_mult)
 				_explosion(owner, data.HitPos, 150, 125) -- radius, damage
 				if IsValid(magic_prop) then magic_prop:Remove() end
 			else
-				if data.OurOldVelocity:Length() >= 500 then -- minimum speed for sparks
-					if string.sub(data.HitEntity:GetName(), 0, PREFIX_LEN) == WAND_PROP_PREFIX then
+				if data.OurOldVelocity:Length() >= 700 then -- minimum speed for sparks
+					if data.HitEntity:IsPlayer() then
+						magic_prop:EmitSound(SMACK_SOUNDS[math.random(#SMACK_SOUNDS)])						
+					elseif string.sub(data.HitEntity:GetName(), 0, PREFIX_LEN) == WAND_PROP_PREFIX then
 						_spark(data.HitPos)
 					end
 				end
