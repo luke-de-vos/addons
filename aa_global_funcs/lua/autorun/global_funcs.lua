@@ -18,6 +18,7 @@ if SERVER then
     end
 
     function _get_euc_dist(vec1, vec2)
+        -- note: does not take sqrt
         local dvec = vec2 - vec1
         dvec.x = dvec.x^2
         dvec.y = dvec.y^2
