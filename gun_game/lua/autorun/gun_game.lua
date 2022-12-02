@@ -11,15 +11,26 @@ if SERVER then
 	local TTT_ROUND_LEN = 5
 	local guns = {}
 
+	-- enable chat command
+	hook.Add("PlayerSay", "custom_commands_gungame", function(sender, text, teamChat)
+		args = _parse_command(sender, text, "!gungame")
+		if args then
+			local kills_to_win = tonumber(args[2])
+			if kills_to_win and kills_to_win >= 1 then
+				gungame_on(kills_to_win)
+			end
+		end
+	end)
+
 	local function update_weapon(ply, guns, kills_to_win)
-		ply:SetFOV(0, 0.15) -- zoom out
-		ply:SetWalkSpeed(250) -- default move speed
+		ply:SetFOV(0, 0.15) -- set fov to default
+		ply:SetWalkSpeed(250) -- set movement speed to default
 		
 		local gungame_gun = nil
 		if ply:Frags() == kills_to_win-1 then -- last kill always crowbar
 			gungame_gun = "weapon_zm_improvised"
 		else
-			gungame_gun = guns[(ply:Frags()%#guns)+1]
+			gungame_gun = guns[(ply:Frags()%#guns)+1] -- lua tables index beginning at 1
 		end
 		if gungame_gun == nil then
 			return 0
@@ -76,7 +87,7 @@ if SERVER then
 		return rand_t
 	end
 	
-	local function gungame_on(kills_to_win)
+	function gungame_on(kills_to_win)
 		-- setup
 		_drop_hooks()
 		someone_already_won = false
@@ -126,17 +137,5 @@ if SERVER then
 			_respawn(victim, RESPAWN_DELAY) 
 		end)
 	end
-
-	-- enable chat command
-	hook.Add("PlayerSay", "custom_commands_gungame", function(sender, text, teamChat)
-		args = _parse_command(sender, text, "!gungame")
-		if args then
-			local kills_to_win = tonumber(args[2])
-			if kills_to_win and kills_to_win >= 1 then
-				gungame_on(kills_to_win)
-			end
-		end
-		
-	end)
 	
 end
