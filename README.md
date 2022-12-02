@@ -6,15 +6,11 @@ Functions that begin with an underscore are defined in aa_global_funcs.
 
 ### FIXES
 
-- prop siccer
-    - should only target innos. Avoid jester etc
 - aa_global_funcs: vector normalization for propulsion should not necessarily result in a max value of 1. Normalizing like that will make propulsion in ordinal directions stronger than cardinal directions.
 - switch golden deag to primary slot
     - need to download and extract first
     
 ### IDEAS
-- prop siccer
-    - add delay. user cycles through delay options with R. options: instant, 5, 20, 60
 - glue trap
     - roots player for a few seconds
     - visible?
