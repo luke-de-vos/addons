@@ -13,8 +13,8 @@ if SERVER then
 	
 	hook.Add("PlayerSay", "custom_commands_ffa", function(sender, text, teamChat)
 		if sender:GetUserGroup() ~= "user" then
-			if text == "!ffa_on" then ffa_on()
-			elseif text == "!ffa_off" then ffa_off()
+			if text == "!ffa" then ffa_on()
+			elseif text == "!ttt" then reg_ttt()
 			elseif text == "!bots_on" then bots_on()
 			elseif text == "!bots_off" then bots_off() end
 		end
@@ -94,7 +94,7 @@ if SERVER then
 	end
 
 	-- undo ffa_on()
-	function ffa_off()
+	function reg_ttt()
 		_drop_hooks()
 		RunConsoleCommand("ttt_debug_preventwin", "0")
 		RunConsoleCommand("ttt_preptime_seconds", "15")
