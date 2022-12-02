@@ -45,62 +45,63 @@ SWEP.WeaponID               = PROP_SICCER
 SWEP.IronSightsPos         = Vector( 5, -15, -2 )
 SWEP.IronSightsAng         = Vector( 2.6, 1.37, 3.5 )
 
+local DELAY_TABLE = {0.05, 5, 20, 60}
+SWEP.DelayIndex = 1
+SWEP.NextReloadTime = 0
 
 function SWEP:PrimaryAttack()
 	if SERVER then
 		local target_ent = self:GetOwner():GetEyeTrace().Entity
-		if IsValid(target_ent) and not target_ent:IsPlayer() then
-			target_ent:SetPhysicsAttacker(self:GetOwner(), 3)
-			sic(target_ent)
-			-- check if it moved. if it moved, take ammos
-			start_pos = target_ent:GetPos()
-			timer.Simple(0.1, function()
-				if target_ent:GetPos() != start_pos then
-					self:TakePrimaryAmmo(1)
-				end
+		if IsValid(target_ent) and !target_ent:IsPlayer() then
+			if !target_ent:GetPhysicsObject():IsMotionEnabled() then return end
+			if !target_ent:GetPhysicsObject():IsMoveable() then return end
+			self:TakePrimaryAmmo(1)
+			-- TODO play clientside confirmation sound
+			timer.Simple(DELAY_TABLE[self.DelayIndex], function()
+				self:Sic(target_ent)
 			end)
-		else
-			print('not a phys object')
 		end
 	end
 end
 
-function sic(prop_ent)
+function SWEP:Sic(prop_ent)
+	if !IsValid(prop_ent) then return end
+	if !IsValid(self:GetOwner()) then return end
+	prop_ent:SetPhysicsAttacker(self:GetOwner(), 3)
 	local float_duration = 1.5
 	
-	prop_ent:GetPhysicsObject():Wake()
+	--prop_ent:GetPhysicsObject():Wake()
 	prop_ent:Ignite(float_duration, 10)
 	float(prop_ent)
 	timer.Simple(float_duration, function() 
-		if IsValid(prop_ent) then 
-			local vec = get_vec_to_closest_player(prop_ent:GetPos())
-			if vec != nil then
-				launch(prop_ent, vec)
-			end
-		end
+		local vec = get_vec_to_closest_player(prop_ent)
+		launch(prop_ent, vec)
 	end)
 end
 
 function float(prop_ent)
 	phys = prop_ent:GetPhysicsObject()
 	phys:EnableGravity(false)
-	force = Vector(0,0,1) * 3000 * phys:GetMass() * engine.TickInterval()
+	force = Vector(0,0,3000) * phys:GetMass() * engine.TickInterval()
 	phys:ApplyForceCenter(force)
 	
 end
 
-function get_vec_to_closest_player(prop_pos)
-	local best_vec = nil
+function get_vec_to_closest_player(prop_ent)
+	if !IsValid(prop_ent) then return end
+	local prop_pos = prop_ent:GetPos()
+	local best_vec = Vector(0,0,-1)
 	local this_distance = 0
 	local lowest_distance = 9999999
-	for i, ply in ipairs(player.GetAll()) do 
+	for i, ply in ipairs(player.GetAll()) do
 		if not ply:Alive() then continue end
-		ply_pos = ply:GetPos()
+		if ply:GetRole() != ROLE_INNOCENT then continue end
+		local ply_pos = ply:GetPos()
 		ply_pos.z = ply_pos.z + 30 -- center mass
 		this_distance = _get_euc_dist(prop_pos, ply_pos)
 		if this_distance < lowest_distance then
 			lowest_distance = this_distance
-			best_vec = ply_pos-prop_pos 
+			best_vec = ply_pos-prop_pos
 		end
 	end
 	return best_vec
@@ -108,10 +109,11 @@ end
 
 function launch(prop_ent, vec)
 	--normalize
+	if vec == nil then return end
 	vec = _normalize_vec(vec, 1)
 	local phys = prop_ent:GetPhysicsObject()
-	phys:EnableGravity(true)
 	local force = vec * 1000000 * phys:GetMass() * engine.TickInterval()
+	phys:EnableGravity(true)
     phys:ApplyForceCenter(force)
 	prop_ent:EmitSound("FX_RicochetSound.Ricochet", 120)
 end
@@ -134,7 +136,11 @@ function SWEP:SecondaryAttack()
 end
 
 function SWEP:Reload()
-	return
+	if CLIENT then return end
+	if CurTime() < self.NextReloadTime then return end
+	self.NextReloadTime = CurTime() + 0.2
+	self.DelayIndex = self.DelayIndex % #DELAY_TABLE + 1
+	Entity(self:GetOwner():EntIndex()):ChatPrint("delay: "..DELAY_TABLE[self.DelayIndex].." seconds.")
 end
 
 function SWEP:PreDrop()
