@@ -89,18 +89,22 @@ function SWEP:PrimaryAttack()
 	end
 	self.Weapon:SendWeaponAnim( ACT_VM_MISSCENTER )
 	self:SetNextPrimaryFire(CurTime() + 0.75)
-	self:SetNextSecondaryFire(CurTime() + 0.75)
+	self:SetNextSecondaryFire(CurTime() + 0.2 )
 	self:EmitSound(self.ShootSound)
 	self:ThrowProp("models/props_c17/oildrum001.mdl", 175000, 5, 1.0)
 	self.IsHot = false
 end
 
 function SWEP:SecondaryAttack()
-	if CLIENT then end
 	self:SetNextSecondaryFire(CurTime() + 1.5)
-	self:SetNextPrimaryFire(CurTime() + 0.25)
+	self:SetNextPrimaryFire(CurTime() + 0.2)
 	self.Weapon:SendWeaponAnim( ACT_VM_MISSCENTER )	
-	self:GetOwner():SetVelocity(self:GetOwner():GetAimVector() * 500)
+	if self:GetOwner():KeyDown(4) then -- crouch binding
+		self:GetOwner():SetVelocity(Vector(0,0,500))
+	else
+		self:GetOwner():SetVelocity((self:GetOwner():GetAimVector() + Vector(0,0,0.4)) * 500)
+	end
+	
 
 	-- sound and visual
 	if SERVER then _spark(self:GetOwner():GetPos()+Vector(0,0,40)) end
