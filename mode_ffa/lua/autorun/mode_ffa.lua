@@ -76,14 +76,15 @@ if SERVER then
 		_add_hook("PlayerDeath", "ffa_PlayerDeath", function(victim, inflictor, attacker)
 			if (attacker:IsPlayer()) then
 				if victim:LastHitGroup() == 1 then
-					_headshot_effect(victim)
+					if inflictor:IsWeapon() and inflictor:GetPrintName() == "barrel_wand" then
+						pass
+					else
+						_headshot_effect(victim)
+					end
 				end
 			end
 			_print_kill(victim, attacker)
 			_respawn(victim, RESPAWN_DELAY) 
-
-			
-
 		end)
 
 		RunConsoleCommand("ttt_debug_preventwin", "1")
