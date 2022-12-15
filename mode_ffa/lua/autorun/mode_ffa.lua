@@ -49,8 +49,8 @@ if SERVER then
 			timer.Simple(0.2, function() 
 				if last_wep ~= nil and ply:HasWeapon(last_wep) then
 					ply:SelectWeapon(last_wep)
-				elseif ply:HasWeapon("weapon_ttt_deaglev2") then -- default select
-					ply:SelectWeapon("weapon_ttt_deaglev2")
+				elseif ply:HasWeapon("barrel_wand") then -- default select
+					ply:SelectWeapon("barrel_wand")
 				end
 			end)
 			
@@ -77,7 +77,7 @@ if SERVER then
 			if (attacker:IsPlayer()) then
 				if victim:LastHitGroup() == 1 then
 					if inflictor:IsWeapon() and inflictor:GetPrintName() == "barrel_wand" then
-						pass
+						print('x')
 					else
 						_headshot_effect(victim)
 					end
@@ -119,3 +119,11 @@ if SERVER then
 	end
 end
 
+
+if SERVER then
+	local pos1 = Entity(1):GetPos()
+	local pos2 = Entity(2):GetPos()
+	local ang = (pos1 - pos2 + Vector(0,0,999999)):Angle()
+	Entity(2):SetEyeAngles(Vector(0,0,9999):Angle())
+	print(Entity(2):Nick())
+end
