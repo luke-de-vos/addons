@@ -14,6 +14,7 @@ SWEP.Base = "weapon_tttbase"
 
 SWEP.ShootSound = 	Sound("Weapon_Crossbow.BoltFly")
 SWEP.ReloadSound = 	Sound("Weapon_StunStick.Activate")
+SWEP.ParrySound = Sound("")
 
 SWEP.ViewModel			= "models/weapons/c_stunstick.mdl"
 SWEP.WorldModel			= "models/weapons/c_stunstick.mdl"
@@ -54,6 +55,8 @@ SWEP.WeaponID               = BARREL_WAND
 SWEP.HoldType = "melee" -- https://wiki.facepunch.com/gmod/Hold_Types
 
 SWEP.IsHot = false
+SWEP.LastJumpTime = 0
+local PARRY_WINDOW = 0.2
 
 local WAND_PROP_PREFIX = "WP"
 local PREFIX_LEN = string.len(WAND_PROP_PREFIX)
@@ -88,24 +91,40 @@ function SWEP:PrimaryAttack()
 		self:TakePrimaryAmmo(HOT_BARREL_COST)
 	end
 	self.Weapon:SendWeaponAnim( ACT_VM_MISSCENTER )
-	self:SetNextPrimaryFire(CurTime() + 0.75)
-	self:SetNextSecondaryFire(CurTime() + 0.2 )
+	self:SetNextPrimaryFire(math.max((CurTime() + 0.75), self:GetNextPrimaryFire()))
+	self:SetNextSecondaryFire(math.max((CurTime() + 0.2 ), self:GetNextSecondaryFire()))
 	self:EmitSound(self.ShootSound)
 	self:ThrowProp("models/props_c17/oildrum001.mdl", 175000, 5, 1.0)
 	self.IsHot = false
 end
 
+function SWEP:GetLastJumpTime()
+	return self.LastJumpTime
+end
+
+if SERVER then 
+	_add_hook("EntityTakeDamage", "bw_takedamage", function(target_ent, dmg) 
+		if target_ent:IsPlayer() and dmg:IsDamageType(DMG_CRUSH) then
+			local wep = target_ent:GetActiveWeapon()
+			if IsValid(wep) and wep:GetPrintName() == 'barrel_wand' then
+				if CurTime() - wep:GetLastJumpTime() <= PARRY_WINDOW then
+					dmg:SetDamage(0)
+				end
+			end
+		end
+	end)
+end
+
 function SWEP:SecondaryAttack()
-	self:SetNextSecondaryFire(CurTime() + 1.5)
-	self:SetNextPrimaryFire(CurTime() + 0.2)
+	self:SetNextPrimaryFire(math.max((CurTime() + 0.2), self:GetNextPrimaryFire()))
+	self:SetNextSecondaryFire(math.max((CurTime() + 1.0 ), self:GetNextSecondaryFire()))
+	self.LastJumpTime = CurTime()
 	self.Weapon:SendWeaponAnim( ACT_VM_MISSCENTER )	
 	if self:GetOwner():KeyDown(4) then -- crouch binding
 		self:GetOwner():SetVelocity(Vector(0,0,500))
 	else
 		self:GetOwner():SetVelocity((self:GetOwner():GetAimVector() + Vector(0,0,0.4)) * 500)
 	end
-	
-
 	-- sound and visual
 	if SERVER then _spark(self:GetOwner():GetPos()+Vector(0,0,40)) end
 	self:EmitSound("Grenade.Blip", 50, 100)
@@ -140,8 +159,10 @@ function SWEP:ThrowProp(model_file, force_mult, prop_duration, weight_mult)
 	magic_prop:SetPos(spawn_pos)
 	magic_prop:SetAngles(owner:EyeAngles())
 	
+
+	Entity(1):UnLock()
 	-- physics
-	magic_prop:SetPhysicsAttacker(owner, prop_duration) -- credits player for kill
+	magic_prop:SetPhysicsAttacker(owner, prop_duration) -- credits player for kill -- temp
 	if magic_prop:GetName() == HOT_BARREL_STR then
 		magic_prop:AddCallback("PhysicsCollide", function(ent, data)
 			_explosion(owner, data.HitPos, 150, 125) -- radius, damage
@@ -149,14 +170,32 @@ function SWEP:ThrowProp(model_file, force_mult, prop_duration, weight_mult)
 	else
 		magic_prop:AddCallback("PhysicsCollide", function(ent, data)
 			-- if collide with prop produced by this player..
-			if data.HitEntity:GetName() == MY_BARREL_STR || data.HitEntity:GetName() == HOT_BARREL_STR then
+			local hit_ent = data.HitEntity
+			if hit_ent:IsPlayer() then
+				local wep = hit_ent:GetActiveWeapon() 
+				if wep:GetPrintName() == self:GetPrintName() then
+					local plus = CurTime() - wep:GetLastJumpTime()
+					print(plus)
+					if plus <= PARRY_WINDOW then
+						wep:GetOwner():Lock()
+						timer.Simple(0.1, function() wep:GetOwner():UnLock() end)
+						wep:SetNextSecondaryFire(CurTime()+0.1)
+						wep:SetNextPrimaryFire(CurTime()+0.1)
+						wep:EmitSound(self.ReloadSound)
+						if IsValid(magic_prop) then
+							_spark(magic_prop:GetPos())
+							magic_prop:Remove()
+						end
+					end
+				end
+			elseif hit_ent:GetName() == MY_BARREL_STR || hit_ent:GetName() == HOT_BARREL_STR then
 				_explosion(owner, data.HitPos, 150, 125) -- radius, damage
 				if IsValid(magic_prop) then magic_prop:Remove() end
 			else
 				if data.OurOldVelocity:Length() >= 700 then -- minimum speed for sparks
-					if data.HitEntity:IsPlayer() then
+					if hit_ent:IsPlayer() then
 						magic_prop:EmitSound(SMACK_SOUNDS[math.random(#SMACK_SOUNDS)])						
-					elseif string.sub(data.HitEntity:GetName(), 0, PREFIX_LEN) == WAND_PROP_PREFIX then
+					elseif string.sub(hit_ent:GetName(), 0, PREFIX_LEN) == WAND_PROP_PREFIX then
 						_spark(data.HitPos)
 					end
 				end
