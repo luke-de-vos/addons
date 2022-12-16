@@ -53,6 +53,7 @@ if SERVER then
     end
 
     -- EFFECTS
+    -- https://wiki.facepunch.com/gmod/Effects
     function _spark(pos)
         local effect = EffectData()
         effect:SetOrigin(pos)
@@ -61,6 +62,16 @@ if SERVER then
         effect:SetNormal(pos:GetNormal())
         effect:SetRadius(10)
         util.Effect("Sparks", effect, true, true)
+    end
+
+    function _effect(effect_name, origin, magnitude, radius, scale)
+        local effect = EffectData()
+        effect:SetOrigin(origin)
+        effect:SetNormal(origin:GetNormal())
+        effect:SetMagnitude(magnitude)
+        effect:SetRadius(radius)
+        effect:SetScale(scale)
+        util.Effect(effect_name, effect, true, true)
     end
 
     function _explosion(attacker, pos, radius, damage)
