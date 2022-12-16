@@ -60,7 +60,7 @@ local PARRY_WINDOW = 0.2
 
 local WAND_PROP_PREFIX = "WP"
 local PREFIX_LEN = string.len(WAND_PROP_PREFIX)
-local HOT_BARREL_STR = WAND_PROP_PREFIX.."hot_barrel"
+local HOT_BARREL_NAME = WAND_PROP_PREFIX.."hot_barrel"
 local HOT_BARREL_COST = 5
 
 local SMACK_SOUNDS = {
@@ -148,14 +148,14 @@ function SWEP:ThrowProp(model_file, force_mult, prop_duration, weight_mult)
 	if not IsValid(magic_prop) then return end
 
 	-- name, model
-	local MY_BARREL_STR = WAND_PROP_PREFIX..self:GetOwner():SteamID()
+	MY_BARREL_NAME = WAND_PROP_PREFIX..self:GetOwner():SteamID()
 	if self.IsHot then
 		magic_prop:SetModel(HOT_PROPS[math.random(#HOT_PROPS)])
-		magic_prop:SetName(HOT_BARREL_STR)
+		magic_prop:SetName(HOT_BARREL_NAME)
 		magic_prop:SetColor(Color(255,0,0))
 	else
 		magic_prop:SetModel(model_file)
-		magic_prop:SetName(MY_BARREL_STR)
+		magic_prop:SetName(MY_BARREL_NAME)
 		magic_prop:SetColor(Color(255,150,150))
 	end
 
@@ -169,43 +169,7 @@ function SWEP:ThrowProp(model_file, force_mult, prop_duration, weight_mult)
 	
 	-- physics
 	magic_prop:SetPhysicsAttacker(owner, prop_duration) -- credits player for kill -- temp
-	if magic_prop:GetName() == HOT_BARREL_STR then
-		magic_prop:AddCallback("PhysicsCollide", function(ent, data)
-			_explosion(owner, data.HitPos, 150, 125) -- radius, damage
-		end)
-	else
-		magic_prop:AddCallback("PhysicsCollide", function(ent, data)
-			-- if collide with prop produced by this player..
-			local hit_ent = data.HitEntity
-			if hit_ent:IsPlayer() then
-				local wep = hit_ent:GetActiveWeapon() 
-				if wep:GetPrintName() == self:GetPrintName() then
-					local plus = CurTime() - wep:GetLastJumpTime()
-					--print(plus)
-					if plus <= PARRY_WINDOW then
-						wep:SetNextSecondaryFire(CurTime()+0.1)
-						wep:SetNextPrimaryFire(CurTime()+0.1)
-						wep:EmitSound(self.ReloadSound)
-						if IsValid(magic_prop) then
-							_spark(magic_prop:GetPos())
-							magic_prop:Remove()
-						end
-					end
-				end
-			elseif hit_ent:GetName() == MY_BARREL_STR || hit_ent:GetName() == HOT_BARREL_STR then
-				_explosion(owner, data.HitPos, 150, 125) -- radius, damage
-				if IsValid(magic_prop) then magic_prop:Remove() end
-			else
-				if data.OurOldVelocity:Length() >= 700 then -- minimum speed for sparks
-					if hit_ent:IsPlayer() then
-						magic_prop:EmitSound(SMACK_SOUNDS[math.random(#SMACK_SOUNDS)])						
-					elseif string.sub(hit_ent:GetName(), 0, PREFIX_LEN) == WAND_PROP_PREFIX then
-						_spark(data.HitPos)
-					end
-				end
-			end
-		end)
-	end
+	self:AddPhysicsCallback(magic_prop, owner, MY_BARREL_NAME)
 
 	-- spawn
 	magic_prop:Spawn()
@@ -231,4 +195,44 @@ end
 
 function SWEP:PreDrop()
    return self.BaseClass.PreDrop(self)
+end
+
+function SWEP:AddPhysicsCallback(magic_prop, owner, MY_BARREL_NAME)
+	if magic_prop:GetName() == HOT_BARREL_NAME then
+		magic_prop:AddCallback("PhysicsCollide", function(ent, data)
+			_explosion(owner, data.HitPos, 150, 125) -- radius, damage
+		end)
+	else
+		magic_prop:AddCallback("PhysicsCollide", function(ent, data)
+			-- if collide with prop produced by this player..
+			local hit_ent = data.HitEntity
+			if hit_ent:IsPlayer() then
+				local wep = hit_ent:GetActiveWeapon()
+				if wep:GetPrintName() == self:GetPrintName() then
+					local plus = CurTime() - wep:GetLastJumpTime()
+					--print(plus)
+					if plus <= PARRY_WINDOW then
+						wep:SetNextSecondaryFire(CurTime()+0.1)
+						wep:SetNextPrimaryFire(CurTime()+0.1)
+						wep:EmitSound(self.ReloadSound)
+						if IsValid(magic_prop) then
+							_spark(magic_prop:GetPos())
+							magic_prop:Remove()
+						end
+					end
+				end
+			elseif hit_ent:GetName() == MY_BARREL_NAME || hit_ent:GetName() == HOT_BARREL_NAME then
+				_explosion(owner, data.HitPos, 150, 125) -- radius, damage
+				if IsValid(magic_prop) then magic_prop:Remove() end
+			else
+				if data.OurOldVelocity:Length() >= 700 then -- minimum speed for sparks
+					if hit_ent:IsPlayer() then
+						magic_prop:EmitSound(SMACK_SOUNDS[math.random(#SMACK_SOUNDS)])						
+					elseif string.sub(hit_ent:GetName(), 0, PREFIX_LEN) == WAND_PROP_PREFIX then
+						_spark(data.HitPos)
+					end
+				end
+			end
+		end)
+	end
 end
