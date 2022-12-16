@@ -108,7 +108,10 @@ if SERVER then
 			local wep = target_ent:GetActiveWeapon()
 			if IsValid(wep) and wep:GetPrintName() == 'barrel_wand' then
 				if CurTime() - wep:GetLastJumpTime() <= PARRY_WINDOW then
+					print("parried!")
 					dmg:SetDamage(0)
+					wep:GetOwner():Lock()
+					timer.Simple(0.2, function() wep:GetOwner():UnLock() end)
 				end
 			end
 		end
@@ -117,7 +120,8 @@ end
 
 function SWEP:SecondaryAttack()
 	self:SetNextPrimaryFire(math.max((CurTime() + 0.2), self:GetNextPrimaryFire()))
-	self:SetNextSecondaryFire(math.max((CurTime() + 1.0 ), self:GetNextSecondaryFire()))
+	local next_secondary = math.max((CurTime() + 1.0 ), self:GetNextSecondaryFire())
+	self:SetNextSecondaryFire(next_secondary)
 	self.LastJumpTime = CurTime()
 	self.Weapon:SendWeaponAnim( ACT_VM_MISSCENTER )	
 	if self:GetOwner():KeyDown(4) then -- crouch binding
@@ -126,7 +130,11 @@ function SWEP:SecondaryAttack()
 		self:GetOwner():SetVelocity((self:GetOwner():GetAimVector() + Vector(0,0,0.4)) * 500)
 	end
 	-- sound and visual
-	if SERVER then _spark(self:GetOwner():GetPos()+Vector(0,0,40)) end
+	if SERVER then 
+		local effect = EffectData()
+		local origin = self:GetOwner():GetPos()+Vector(0,0,30)
+		_effect("Sparks", origin, 1, 1, 1)
+	end
 	self:EmitSound("Grenade.Blip", 50, 100)
 end
 
@@ -159,8 +167,6 @@ function SWEP:ThrowProp(model_file, force_mult, prop_duration, weight_mult)
 	magic_prop:SetPos(spawn_pos)
 	magic_prop:SetAngles(owner:EyeAngles())
 	
-
-	Entity(1):UnLock()
 	-- physics
 	magic_prop:SetPhysicsAttacker(owner, prop_duration) -- credits player for kill -- temp
 	if magic_prop:GetName() == HOT_BARREL_STR then
@@ -175,10 +181,8 @@ function SWEP:ThrowProp(model_file, force_mult, prop_duration, weight_mult)
 				local wep = hit_ent:GetActiveWeapon() 
 				if wep:GetPrintName() == self:GetPrintName() then
 					local plus = CurTime() - wep:GetLastJumpTime()
-					print(plus)
+					--print(plus)
 					if plus <= PARRY_WINDOW then
-						wep:GetOwner():Lock()
-						timer.Simple(0.1, function() wep:GetOwner():UnLock() end)
 						wep:SetNextSecondaryFire(CurTime()+0.1)
 						wep:SetNextPrimaryFire(CurTime()+0.1)
 						wep:EmitSound(self.ReloadSound)
