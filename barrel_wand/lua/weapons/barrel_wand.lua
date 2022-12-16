@@ -54,8 +54,12 @@ SWEP.WeaponID               = BARREL_WAND
 
 SWEP.HoldType = "melee" -- https://wiki.facepunch.com/gmod/Hold_Types
 
+SWEP.PropDuration = 5
+SWEP.ThrowForce = 175000
+
 SWEP.IsHot = false
 SWEP.LastJumpTime = 0
+
 local PARRY_WINDOW = 0.2
 
 local WAND_PROP_PREFIX = "WP"
@@ -94,7 +98,7 @@ function SWEP:PrimaryAttack()
 	self:SetNextPrimaryFire(math.max((CurTime() + 0.75), self:GetNextPrimaryFire()))
 	self:SetNextSecondaryFire(math.max((CurTime() + 0.2 ), self:GetNextSecondaryFire()))
 	self:EmitSound(self.ShootSound)
-	self:ThrowProp("models/props_c17/oildrum001.mdl", 175000, 5, 1.0)
+	self:ThrowProp("models/props_c17/oildrum001.mdl", self.ThrowForce, self.PropDuration, 1.0)
 	self.IsHot = false
 end
 
