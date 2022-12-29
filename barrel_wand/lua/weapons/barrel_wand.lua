@@ -281,61 +281,9 @@ function SWEP:AddPhysicsCallback(magic_prop, owner, MY_BARREL_NAME)
 	end
 end
 
-function SWEP:Reload()
-	
-end
-function SWEP:PreDrop()
-   return self.BaseClass.PreDrop(self)
-end
-
-function SWEP:GetLastJumpTime()
-	return self.LastJumpTime
-end
-function SWEP:SetLastJumpTime(val)
-	self.LastJumpTime = val
-end
-function SWEP:GetLastParryTime()
-	return self.LastParryTime
-end
-function SWEP:SetLastParryTime(val)
-	self.LastParryTime = val
-end
-
-function get_closest_player(source)
-	if !IsValid(source) then return end
-	local prop_pos = source:GetPos()
-	local best_ply = nil
-	local this_distance = 0
-	local lowest_distance = 9999999
-	for i, ply in ipairs(player.GetAll()) do
-		if source:Nick() == ply:Nick() then continue end
-		if not ply:Alive() then continue end
-		--if ply:GetRole() != ROLE_INNOCENT then continue end
-		local ply_pos = ply:GetPos()
-		ply_pos.z = ply_pos.z + 30 -- center mass
-		this_distance = _get_euc_dist(prop_pos, ply_pos)
-		if this_distance < lowest_distance then
-			lowest_distance = this_distance
-			best_ply = ply
-		end
-	end
-	return best_ply
-end
-
 -- if SERVER then
 -- Entity(1):SetObserverMode(6)
 -- end
-
-function attempt_attack(ply, attack_type)
-	-- attack_type (int) 1 or 2 for primary and secondary attack respectively
-	if IsValid(ply) and IsValid(ply:GetActiveWeapon()) then
-		if attack_type == 1 then
-			ply:GetActiveWeapon():PrimaryAttack()
-		elseif attack_type == 2 then
-			ply:GetActiveWeapon():SecondaryAttack()
-		end			
-	end
-end	
 
 if SERVER then
 	-- bot behavior
@@ -365,28 +313,58 @@ if SERVER then
 				end
 			end
 		end
-		
-
-		-- if IsValid(Entity(3)) and Entity(3):IsPlayer() and IsValid(Entity(3):GetActiveWeapon()) then
-		-- 	local r = math.random()
-		-- 	if r <= 0.01 then
-		-- 		if CurTime() > Entity(3):GetActiveWeapon():GetNextSecondaryFire() then
-		-- 			Entity(3):SetEyeAngles((Entity(2):GetPos() + Vector(0,0,500) - Entity(3):GetPos()):Angle())
-		-- 			Entity(3):GetActiveWeapon():SecondaryAttack()
-		-- 		end
-		-- 	elseif r <= 0.15 then
-		-- 		if CurTime() > Entity(3):GetActiveWeapon():GetNextPrimaryFire() then
-		-- 			local posdiff = Entity(2):GetPos() - Entity(3):GetPos() + VectorRand(-30,30)
-		-- 			Entity(3):SetEyeAngles(posdiff:Angle())
-		-- 			if Entity(3):GetEyeTrace().Entity:IsPlayer() then
-		-- 				Entity(3):GetActiveWeapon():PrimaryAttack()
-		-- 				if math.random() < 0.5 then 
-		-- 					Entity(2):GetActiveWeapon():SecondaryAttack()
-		-- 				end
-		-- 			end
-		-- 		end
-		-- 	end
-		-- end
 	end)
 	--hook.Remove("Think", "BW_bot_behavior")
+end
+
+function attempt_attack(ply, attack_type)
+	-- attack_type (int) 1 or 2 for primary and secondary attack respectively
+	if IsValid(ply) and IsValid(ply:GetActiveWeapon()) then
+		if attack_type == 1 then
+			ply:GetActiveWeapon():PrimaryAttack()
+		elseif attack_type == 2 then
+			ply:GetActiveWeapon():SecondaryAttack()
+		end			
+	end
+end	
+
+function get_closest_player(source)
+	if !IsValid(source) then return end
+	local prop_pos = source:GetPos()
+	local best_ply = nil
+	local this_distance = 0
+	local lowest_distance = 9999999
+	for i, ply in ipairs(player.GetAll()) do
+		if source:Nick() == ply:Nick() then continue end
+		if not ply:Alive() then continue end
+		--if ply:GetRole() != ROLE_INNOCENT then continue end
+		local ply_pos = ply:GetPos()
+		ply_pos.z = ply_pos.z + 30 -- center mass
+		this_distance = _get_euc_dist(prop_pos, ply_pos)
+		if this_distance < lowest_distance then
+			lowest_distance = this_distance
+			best_ply = ply
+		end
+	end
+	return best_ply
+end
+
+function SWEP:Reload()
+	
+end
+function SWEP:PreDrop()
+   return self.BaseClass.PreDrop(self)
+end
+
+function SWEP:GetLastJumpTime()
+	return self.LastJumpTime
+end
+function SWEP:SetLastJumpTime(val)
+	self.LastJumpTime = val
+end
+function SWEP:GetLastParryTime()
+	return self.LastParryTime
+end
+function SWEP:SetLastParryTime(val)
+	self.LastParryTime = val
 end
