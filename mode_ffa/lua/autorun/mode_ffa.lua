@@ -14,9 +14,7 @@ if SERVER then
 	hook.Add("PlayerSay", "custom_commands_ffa", function(sender, text, teamChat)
 		if sender:GetUserGroup() ~= "user" then
 			if text == "!ffa" then ffa_on()
-			elseif text == "!ttt" then reg_ttt()
-			elseif text == "!bots_on" then bots_on()
-			elseif text == "!bots_off" then bots_off() end
+			elseif text == "!ttt" then reg_ttt() end
 		end
 	end)
 
@@ -25,6 +23,10 @@ if SERVER then
 
 		_drop_hooks()
 		local died_with = {}  -- track what weapon player died with. Equip that weapon on spawn
+
+		for i,ply in ipairs(player.GetAll()) do
+			ply:SetFrags(0)
+		end
 		
 		-- HOOKS
 		-- assign innocent role to every player
@@ -63,6 +65,7 @@ if SERVER then
 			-- killer gets a mag for current weapon
 			if (attacker:IsPlayer() and attacker:UserID() ~= ply:UserID() ) then 
 				_give_current_ammo(attacker, 1)
+				attacker:AddFrags(1)
 			end
 			-- do not drop weapons
 			if IsValid(ply:GetActiveWeapon()) then ply:GetActiveWeapon():Remove() end
@@ -79,13 +82,14 @@ if SERVER then
 					if inflictor:IsWeapon() and inflictor:GetPrintName() == "barrel_wand" then
 						print('x')
 					else
+						print('y')
 						_headshot_effect(victim)
 					end
 				end
 			end
 			_print_kill(victim, attacker)
 			_respawn(victim, RESPAWN_DELAY) 
-		end)
+		end)	
 
 		RunConsoleCommand("ttt_debug_preventwin", "1")
 		RunConsoleCommand("ttt_preptime_seconds", "2")
@@ -102,28 +106,4 @@ if SERVER then
 		RunConsoleCommand("ttt_roundtime_minutes", TTT_ROUND_LEN)
 		RunConsoleCommand("ulx", "roundrestart")
 	end
-
-	-- spawn bots until there are 16 players
-	function bots_on()
-		for i=1,16-player.GetCount() do
-			--player.CreateNextBot("Bot" .. i) -- bots created with this func do not move for some reason
-			RunConsoleCommand("bot") 
-		end
-		--RunConsoleCommand("bot_zombie","0")
-	end
-	-- kick bots
-	function bots_off()
-		for i, bot in ipairs(player.GetBots()) do
-			bot:Kick()
-		end
-	end
-end
-
-
-if SERVER then
-	local pos1 = Entity(1):GetPos()
-	local pos2 = Entity(2):GetPos()
-	local ang = (pos1 - pos2 + Vector(0,0,999999)):Angle()
-	Entity(2):SetEyeAngles(Vector(0,0,9999):Angle())
-	print(Entity(2):Nick())
 end
