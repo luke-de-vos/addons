@@ -257,7 +257,7 @@ function freeze(func_ply, pos)
 	end)
 end
 
-hook.Add("EntityTakeDamage", "bw_takedamage", function(target_ent, dmg) -- on take damage. handles parrying and special barrels
+hook.Add("EntityTakeDamage", "bw_takedamage", function(vic, dmg) -- on take damage. handles parrying and special barrels
 	if SERVER then
 		if vic:IsPlayer() then 
 			local wep = vic:GetActiveWeapon()
