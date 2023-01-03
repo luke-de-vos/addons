@@ -74,6 +74,8 @@ SWEP.MeleeReach = 60
 SWEP.MeleeRadius = 55
 SWEP.MeleeDamage = 100
 
+SWEP.LastDamageTime = CurTime()
+
 local PARRY_WINDOW = 0.2
 local PARRY_THROW_WINDOW = SWEP.PrimaryRof - 0.01
 
@@ -257,35 +259,38 @@ end
 
 hook.Add("EntityTakeDamage", "bw_takedamage", function(target_ent, dmg) -- on take damage. handles parrying and special barrels
 	if SERVER then
-		if target_ent:IsPlayer() and dmg:GetAttacker():IsPlayer() then
-			local wep = target_ent:GetActiveWeapon()
+		if vic:IsPlayer() then 
+			local wep = vic:GetActiveWeapon()
+			local att = dmg:GetAttacker()
 			if IsValid(wep) and wep:GetPrintName() == 'barrel_wand' then
-				local diff = CurTime() - wep:GetLastJumpTime() 
-				if diff <= PARRY_WINDOW then
-					if target_ent:SteamID() != dmg:GetAttacker():SteamID() then -- did parry
+				-- check for parry
+				if att:IsPlayer() and vic:SteamID() != att:SteamID() then
+					local diff = CurTime() - wep:GetLastJumpTime() 
+					if diff <= PARRY_WINDOW then
 						wep:SetLastParryTime(CurTime())
 						wep:SendWeaponAnim( ACT_VM_HITCENTER )
-						freeze(target_ent, target_ent:GetPos())
-						freeze(dmg:GetAttacker(), dmg:GetAttacker():GetPos())
-						dmg:SetDamage(0)
 						wep:EmitSound(wep.ParrySound)
-						dmg:GetAttacker():EmitSound(wep.GotParriedSound)
-						dmg:GetAttacker():GetActiveWeapon():SetNextPrimaryFire(CurTime() + wep.PrimaryRof)
+						att:EmitSound(wep.GotParriedSound)
+						freeze(vic, vic:GetPos())
+						freeze(att, att:GetPos())
+						dmg:SetDamage(0)
 						if IsValid(dmg:GetInflictor()) and dmg:IsDamageType(DMG_CRUSH) then
 							_effect("Sparks", dmg:GetInflictor():GetPos()+Vector(0,0,20),5,1,1)
 							dmg:GetInflictor():Remove()
 						else
-							_effect("Sparks", target_ent:GetShootPos() + target_ent:GetAimVector()*20,5,1,1)
+							_effect("Sparks", vic:GetShootPos() + vic:GetAimVector()*20,5,1,1)
 						end
-						-- refresh cooldowns
+						-- update cooldowns
+						att:GetActiveWeapon():SetNextPrimaryFire(CurTime() + wep.PrimaryRof)
 						wep:SetNextSecondaryFire(CurTime()+0.2)
 						wep:SetNextPrimaryFire(CurTime()+0.05)
 						wep:SetNextReload(CurTime()+0.1)
 					end
-				else -- got hit	
+				end
+				if dmg:GetDamage() > 0 then
+					wep.LastDamageTime = CurTime()
 					if dmg:GetInflictor():GetName() == HOT_BARREL_NAME then
-						--dmg:SetDamage(600)
-						_explosion(dmg:GetAttacker(), target_ent:GetPos(), 150, 1000)
+						_explosion(att, vic:GetPos(), 150, 1000)
 					elseif dmg:GetDamageType() == DMG_CRUSH then
 						sound.Play(SMACK_SOUNDS[math.random(#SMACK_SOUNDS)], dmg:GetInflictor():GetPos())
 					end
@@ -302,6 +307,7 @@ function SWEP:AddPhysicsCallback(magic_prop, owner, MY_BARREL_NAME)
 			if string.sub(hit_ent:GetName(), 0, PREFIX_LEN) == WAND_PROP_PREFIX then
 				hit_ent:Remove()
 			end
+			print('xxxxxxxxxxxx')	
 			-- if data.DeltaTime > 0.5 then
 			-- 	_explosion(owner, data.HitPos, 150, 125) -- radius, damage
 			-- end
@@ -328,17 +334,19 @@ function SWEP:AddPhysicsCallback(magic_prop, owner, MY_BARREL_NAME)
 end
 
 -- HEALTH REGEN
-SWEP.NextHealTime = 0
 function SWEP:Think() 
-	if CurTime() >= self.NextHealTime then
-		self.NextHealTime = CurTime() + 1
-		self:GetOwner():SetHealth(math.min(self:GetOwner():Health()+20, self:GetOwner():GetMaxHealth()))
+	if CurTime() - self.LastDamageTime >= 4 then
+		local owner = self:GetOwner()
+		if owner:Health() < owner:GetMaxHealth() then
+			owner:SetHealth(math.min(owner:Health()+2, owner:GetMaxHealth()))
+		end
 	end
 end
 
 function SWEP:Equip()
 	if IsValid(self:GetOwner()) then
-		self:GetOwner():SetMaxHealth(500)
+		self:GetOwner():SetMaxHealth(300)
+		self.LastDamageTime = CurTime()
 	end
 end
 
