@@ -30,7 +30,7 @@ if SERVER then
 	end
 	
 	function bot_fight()
-		hook.Add("Think", "BW_bot_behavior", function()
+		_add_hook("Think", "BW_bot_behavior", function()
 			for i,ply in ipairs(player.GetAll()) do
 				if ply:SteamID() != "BOT" then continue end
 				local target = get_closest_player(ply)
@@ -97,5 +97,5 @@ if SERVER then
 		return best_ply
 	end
 
-	--hook.Remove("Think", "BW_bot_behavior")
+	
 end
