@@ -64,13 +64,17 @@ if SERVER then
         util.Effect("Sparks", effect, true, true)
     end
 
-    function _effect(effect_name, origin, magnitude, radius, scale)
+    function _effect(effect_name, origin, magnitude, radius, scale, start, flags)
         local effect = EffectData()
         effect:SetOrigin(origin)
         effect:SetNormal(origin:GetNormal())
         effect:SetMagnitude(magnitude)
         effect:SetRadius(radius)
         effect:SetScale(scale)
+        if IsValid(start) then
+            effect:SetStart(start)
+            effect:SetFlags(flags)
+        end
         util.Effect(effect_name, effect, true, true)
     end
 
@@ -165,6 +169,7 @@ if SERVER then
             timer.Simple(delay, function() 
                 if IsValid(ply) then
                     RunConsoleCommand("ulx", "respawn", ply:Name()) 
+                    timer.Simple(0.2, function() ply:SetHealth(500) end)
                 end
             end)
         end
