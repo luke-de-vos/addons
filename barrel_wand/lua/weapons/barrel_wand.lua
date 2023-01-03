@@ -1,4 +1,3 @@
-AddCSLuaFile()
 print("Executed lua: " .. debug.getinfo(1,'S').source)
 
 if SERVER then
@@ -15,9 +14,10 @@ end
 SWEP.Base = "weapon_tttbase"
 
 SWEP.ShootSound = 	Sound("Weapon_Crossbow.BoltFly")
-SWEP.ReloadSound = 	Sound("Weapon_StunStick.Activate")
+SWEP.ReloadSound = 	Sound("Weapon_Crowbar.Single")
 SWEP.HotSound = "Weapon_PhysCannon.Launch"
 SWEP.ParrySound = "parry_44.wav"
+SWEP.GotParriedSound = Sound("Weapon_StunStick.Activate")
 
 SWEP.ViewModel			= "models/weapons/c_stunstick.mdl"
 SWEP.WorldModel			= "models/weapons/c_stunstick.mdl"
@@ -66,10 +66,16 @@ SWEP.LastJumpTime = 0
 
 SWEP.PrimaryRof = 0.75
 SWEP.SecondaryRof = 1.0
-SWEP.InterRof = 0.2
+SWEP.InterRof = 0.00
+SWEP.ReloadRof = 0.75
+SWEP.NextReloadTime = 0
+
+SWEP.MeleeReach = 60
+SWEP.MeleeRadius = 55
+SWEP.MeleeDamage = 100
 
 local PARRY_WINDOW = 0.2
-local PARRY_THROW_WINDOW = 0.7
+local PARRY_THROW_WINDOW = SWEP.PrimaryRof - 0.01
 
 local WAND_PROP_PREFIX = "WP"
 local PREFIX_LEN = string.len(WAND_PROP_PREFIX)
@@ -99,11 +105,11 @@ local HOT_PROPS = {
 	--"models/props_junk/Wheebarrow01a.mdl"
 	}
 
-
 function SWEP:PrimaryAttack()
 	if self:GetNextPrimaryFire() <= CurTime() then
 		self:SetNextPrimaryFire(math.max((CurTime() + self.PrimaryRof), self:GetNextPrimaryFire()))
-		--self:SetNextSecondaryFire(math.max((CurTime() + self.InterRof), self:GetNextSecondaryFire()))
+		self:SetNextSecondaryFire(math.max((CurTime() + self.InterRof), self:GetNextSecondaryFire()))
+		self:SetNextReload(math.max((CurTime() + self.PrimaryRof), self:GetNextPrimaryFire()))
 
 		-- animations
 		self:SendWeaponAnim( ACT_VM_MISSCENTER )
@@ -116,7 +122,7 @@ function SWEP:PrimaryAttack()
 			self:TakePrimaryAmmo(HOT_BARREL_COST)
 		elseif (CurTime() - self:GetLastParryTime()) <= PARRY_THROW_WINDOW then
 			self.IsHot = true
-			self:GetOwner():EmitSound("self.HotSound", 100, 100, 1, CHAN_WEAPON)
+			--self:GetOwner():EmitSound(self.HotSound, 100, 100, 1, CHAN_WEAPON)
 		else 
 			self:EmitSound(self.ShootSound, 100, 100, 1, CHAN_WEAPON)
 		end
@@ -128,8 +134,8 @@ function SWEP:PrimaryAttack()
 end
 
 function SWEP:SecondaryAttack()
-	--self:SetNextPrimaryFire(math.max((CurTime() + self.InterRof), self:GetNextPrimaryFire()))
 	if self:GetNextSecondaryFire() <= CurTime() then
+		self:SetNextPrimaryFire(math.max((CurTime() + self.InterRof), self:GetNextPrimaryFire()))
 		self:SetNextSecondaryFire(math.max((CurTime() + self.SecondaryRof), self:GetNextSecondaryFire()))
 		self.LastJumpTime = CurTime()
 		if self:GetOwner():KeyDown(4) then -- crouch binding
@@ -145,6 +151,36 @@ function SWEP:SecondaryAttack()
 		end
 		self:GetOwner():DoCustomAnimEvent(PLAYERANIMEVENT_JUMP, 0)
 		self:EmitSound("Grenade.Blip", 50, 100, 1, CHAN_WEAPON)
+	end
+end
+
+function SWEP:Reload()
+	if self.NextReloadTime <= CurTime() then
+		self:SetNextPrimaryFire(math.max((CurTime() + self.ReloadRof), self:GetNextPrimaryFire()))
+		self.NextReloadTime = CurTime() + self.ReloadRof
+
+		self:EmitSound(self.ReloadSound)
+		self:GetOwner():DoAttackEvent()
+
+		if SERVER then
+			self:SendWeaponAnim(ACT_VM_MISSCENTER)
+		end
+
+		local owner = self:GetOwner()
+		local pos = owner:GetAimVector()*self.MeleeReach + owner:GetShootPos()
+		local effect = EffectData()
+		effect:SetStart(pos)
+		effect:SetOrigin(pos)
+		effect:SetScale(10)
+		effect:SetRadius(10)
+		effect:SetMagnitude(10)
+		if IsValid(owner) then
+			if CLIENT then
+				util.Effect("MetalSpark", effect, true, true)
+			end
+			util.BlastDamage(owner, owner, pos, self.MeleeRadius, self.MeleeDamage) -- radius, damage
+			util.BlastDamage(owner, owner, pos, self.MeleeRadius, self.MeleeDamage) -- radius, damage
+		end
 	end
 end
 
@@ -178,7 +214,7 @@ function SWEP:ThrowProp(model_file, force_mult, prop_duration, weight_mult)
 	magic_prop:SetAngles(owner:EyeAngles())
 	
 	-- physics
-	magic_prop:SetPhysicsAttacker(owner, prop_duration) -- credits player for kill -- temp
+	magic_prop:SetPhysicsAttacker(owner, prop_duration) -- credits player for kill
 	self:AddPhysicsCallback(magic_prop, owner, MY_BARREL_NAME)
 
 	-- spawn
@@ -219,38 +255,45 @@ function freeze(func_ply, pos)
 	end)
 end
 
-if SERVER then
-	-- Check for parry and hot barrel
-	hook.Add("EntityTakeDamage", "bw_takedamage", function(target_ent, dmg)
+hook.Add("EntityTakeDamage", "bw_takedamage", function(target_ent, dmg) -- on take damage. handles parrying and special barrels
+	if SERVER then
 		if target_ent:IsPlayer() and dmg:GetAttacker():IsPlayer() then
 			local wep = target_ent:GetActiveWeapon()
 			if IsValid(wep) and wep:GetPrintName() == 'barrel_wand' then
 				local diff = CurTime() - wep:GetLastJumpTime() 
-				if diff <= PARRY_WINDOW then -- parried
-					wep:SetLastParryTime(CurTime())
-					wep:SendWeaponAnim( ACT_VM_HITCENTER )
-					freeze(target_ent, target_ent:GetPos())
-					freeze(dmg:GetAttacker(), dmg:GetAttacker():GetPos())
-					dmg:SetDamage(0)
-					wep:EmitSound(wep.ParrySound)
-					dmg:GetAttacker():EmitSound(wep.ReloadSound)
-					if IsValid(dmg:GetInflictor()) and dmg:IsDamageType(DMG_CRUSH) then
-						_effect("Sparks", dmg:GetInflictor():GetPos()+Vector(0,0,20),2,2,2)
-						dmg:GetInflictor():Remove()
+				if diff <= PARRY_WINDOW then
+					if target_ent:SteamID() != dmg:GetAttacker():SteamID() then -- did parry
+						wep:SetLastParryTime(CurTime())
+						wep:SendWeaponAnim( ACT_VM_HITCENTER )
+						freeze(target_ent, target_ent:GetPos())
+						freeze(dmg:GetAttacker(), dmg:GetAttacker():GetPos())
+						dmg:SetDamage(0)
+						wep:EmitSound(wep.ParrySound)
+						dmg:GetAttacker():EmitSound(wep.GotParriedSound)
+						dmg:GetAttacker():GetActiveWeapon():SetNextPrimaryFire(CurTime() + wep.PrimaryRof)
+						if IsValid(dmg:GetInflictor()) and dmg:IsDamageType(DMG_CRUSH) then
+							_effect("Sparks", dmg:GetInflictor():GetPos()+Vector(0,0,20),5,1,1)
+							dmg:GetInflictor():Remove()
+						else
+							_effect("Sparks", target_ent:GetShootPos() + target_ent:GetAimVector()*20,5,1,1)
+						end
+						-- refresh cooldowns
+						wep:SetNextSecondaryFire(CurTime()+0.2)
+						wep:SetNextPrimaryFire(CurTime()+0.05)
+						wep:SetNextReload(CurTime()+0.1)
 					end
-					-- refresh cooldowns
-					wep:SetNextSecondaryFire(CurTime()+0.2)
-					wep:SetNextPrimaryFire(CurTime()+0.1)
 				else -- got hit	
-					sound.Play(SMACK_SOUNDS[math.random(#SMACK_SOUNDS)], dmg:GetInflictor():GetPos())
 					if dmg:GetInflictor():GetName() == HOT_BARREL_NAME then
-						dmg:SetDamage(600)
+						--dmg:SetDamage(600)
+						_explosion(dmg:GetAttacker(), target_ent:GetPos(), 150, 1000)
+					elseif dmg:GetDamageType() == DMG_CRUSH then
+						sound.Play(SMACK_SOUNDS[math.random(#SMACK_SOUNDS)], dmg:GetInflictor():GetPos())
 					end
 				end
 			end
 		end
-	end)
-end
+	end
+end)
 
 function SWEP:AddPhysicsCallback(magic_prop, owner, MY_BARREL_NAME)
 	if magic_prop:GetName() == HOT_BARREL_NAME then
@@ -267,13 +310,16 @@ function SWEP:AddPhysicsCallback(magic_prop, owner, MY_BARREL_NAME)
 		magic_prop:AddCallback("PhysicsCollide", function(ent, data)
 			local hit_ent = data.HitEntity
 			if hit_ent:GetName() == MY_BARREL_NAME || hit_ent:GetName() == HOT_BARREL_NAME then
-				_explosion(owner, data.HitPos, 150, 125) -- radius, damage
+				_explosion(owner, data.HitPos, 150, 200) -- radius, damage
 				if IsValid(magic_prop) then magic_prop:Remove() end
 			else
 				if data.OurOldVelocity:Length() >= 700 then -- minimum speed for barrel collision effects
 					if string.sub(hit_ent:GetName(), 0, PREFIX_LEN) == WAND_PROP_PREFIX then
-						sound.Play(CLANK_SOUNDS[math.random(#CLANK_SOUNDS)], data.HitPos, 75, 100, 1)
-						_spark(data.HitPos)
+						if IsFirstTimePredicted() then
+							sound.Play(CLANK_SOUNDS[math.random(#CLANK_SOUNDS)], data.HitPos, 75, 100, 1)
+							--_spark(data.HitPos)
+							_effect("MetalSpark", data.HitPos, 1, 1, 1)
+						end
 					end
 				end
 			end
@@ -281,80 +327,33 @@ function SWEP:AddPhysicsCallback(magic_prop, owner, MY_BARREL_NAME)
 	end
 end
 
--- if SERVER then
--- Entity(1):SetObserverMode(6)
+-- HEALTH REGEN
+SWEP.NextHealTime = 0
+function SWEP:Think() 
+	if CurTime() >= self.NextHealTime then
+		self.NextHealTime = CurTime() + 1
+		self:GetOwner():SetHealth(math.min(self:GetOwner():Health()+20, self:GetOwner():GetMaxHealth()))
+	end
+end
+
+function SWEP:Equip()
+	if IsValid(self:GetOwner()) then
+		self:GetOwner():SetMaxHealth(500)
+	end
+end
+
+-- function SWEP:Holster()
+-- 	-- if SERVER then
+-- 	-- 	if IsValid(self:GetOwner()) then
+-- 	-- 		self:GetOwner():SetMaxHealth(100)
+-- 	-- 		self:GetOwner():SetHealth(100)
+-- 	-- 	end
+-- 	-- end
 -- end
 
-if SERVER then
-	-- bot behavior
-	hook.Add("Think", "BW_bot_behavior", function()
-		for i,ply in ipairs(player.GetAll()) do
-			if ply:SteamID() != "BOT" then continue end
-			local target = get_closest_player(ply)
-			if target != nil then
-				if IsValid(ply) then
-					local r = math.random()
-					if r <= 0.01 then -- do leap
-						ply:SetEyeAngles((target:GetPos() + Vector(0,0,500) - ply:GetPos()):Angle())
-						attempt_attack(ply, 2)
-					elseif r <= 0.15 then -- attack
-						local posdiff = target:GetPos() - ply:GetPos() + VectorRand(-20,20)
-						ply:SetEyeAngles(posdiff:Angle())
-						local tr = ply:GetEyeTrace()
-						if tr.Entity:IsPlayer() then
-							attempt_attack(ply, 1)
-							if math.random() < 0.5 then -- 50% chance for bot target to attempt parry
-								if target:SteamID() == "BOT" then attempt_attack(target, 2) end
-							end
-						elseif _get_euc_dist(tr.HitPos, ply:GetPos()) < 10 then -- likely face against wall
-							ply:GetActiveWeapon():SecondaryAttack()
-						end
-					end
-				end
-			end
-		end
-	end)
-	--hook.Remove("Think", "BW_bot_behavior")
-end
-
-function attempt_attack(ply, attack_type)
-	-- attack_type (int) 1 or 2 for primary and secondary attack respectively
-	if IsValid(ply) and IsValid(ply:GetActiveWeapon()) then
-		if attack_type == 1 then
-			ply:GetActiveWeapon():PrimaryAttack()
-		elseif attack_type == 2 then
-			ply:GetActiveWeapon():SecondaryAttack()
-		end			
-	end
-end	
-
-function get_closest_player(source)
-	if !IsValid(source) then return end
-	local prop_pos = source:GetPos()
-	local best_ply = nil
-	local this_distance = 0
-	local lowest_distance = 9999999
-	for i, ply in ipairs(player.GetAll()) do
-		if source:Nick() == ply:Nick() then continue end
-		if not ply:Alive() then continue end
-		--if ply:GetRole() != ROLE_INNOCENT then continue end
-		local ply_pos = ply:GetPos()
-		ply_pos.z = ply_pos.z + 30 -- center mass
-		this_distance = _get_euc_dist(prop_pos, ply_pos)
-		if this_distance < lowest_distance then
-			lowest_distance = this_distance
-			best_ply = ply
-		end
-	end
-	return best_ply
-end
-
-function SWEP:Reload()
-	
-end
-function SWEP:PreDrop()
-   return self.BaseClass.PreDrop(self)
-end
+-- function SWEP:OnRemove()
+-- 	-- self:Holster()
+-- end
 
 function SWEP:GetLastJumpTime()
 	return self.LastJumpTime
@@ -368,3 +367,12 @@ end
 function SWEP:SetLastParryTime(val)
 	self.LastParryTime = val
 end
+function SWEP:SetNextReload(val)
+	self.NextReloadTime = val
+end
+
+function SWEP:PreDrop()
+	return self.BaseClass.PreDrop(self)
+end
+
+
