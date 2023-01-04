@@ -5,10 +5,9 @@ if SERVER then
 	resource.AddFile("sound/body_medium_impact_hard4.wav")
 	resource.AddFile("sound/body_medium_impact_hard5.wav")
 	resource.AddFile("sound/parry_44.wav")
-end
-
-if SERVER then
+	resource.AddFile("sound/hit.wav")
 	resource.AddFile("materials/VGUI/ttt/icon_barrel_wand.jpg")
+	util.AddNetworkString("hitmarker_msg")
 end
 
 SWEP.Base = "weapon_tttbase"
@@ -18,6 +17,7 @@ SWEP.ReloadSound = 	Sound("Weapon_Crowbar.Single")
 SWEP.HotSound = "Weapon_PhysCannon.Launch"
 SWEP.ParrySound = "parry_44.wav"
 SWEP.GotParriedSound = Sound("Weapon_StunStick.Activate")
+SWEP.HitSound = Sound("Hit")
 
 SWEP.ViewModel			= "models/weapons/c_stunstick.mdl"
 SWEP.WorldModel			= "models/weapons/c_stunstick.mdl"
@@ -66,13 +66,13 @@ SWEP.LastJumpTime = 0
 
 SWEP.PrimaryRof = 0.75
 SWEP.SecondaryRof = 1.0
-SWEP.InterRof = 0.00
+SWEP.InterRof = 0.2
 SWEP.ReloadRof = 0.75
 SWEP.NextReloadTime = 0
 
 SWEP.MeleeReach = 60
 SWEP.MeleeRadius = 55
-SWEP.MeleeDamage = 100
+SWEP.MeleeDamage = 30
 
 SWEP.LastDamageTime = CurTime()
 
@@ -113,7 +113,7 @@ function SWEP:PrimaryAttack()
 	if self:GetNextPrimaryFire() <= CurTime() then
 		self:SetNextPrimaryFire(math.max((CurTime() + self.PrimaryRof), self:GetNextPrimaryFire()))
 		self:SetNextSecondaryFire(math.max((CurTime() + self.InterRof), self:GetNextSecondaryFire()))
-		self:SetNextReload(math.max((CurTime() + self.PrimaryRof), self:GetNextPrimaryFire()))
+		self:SetNextReload(math.max((CurTime() + self.InterRof), self.NextReloadTime))
 
 		-- animations
 		self:SendWeaponAnim( ACT_VM_MISSCENTER )
@@ -141,6 +141,8 @@ function SWEP:SecondaryAttack()
 	if self:GetNextSecondaryFire() <= CurTime() then
 		self:SetNextPrimaryFire(math.max((CurTime() + self.InterRof), self:GetNextPrimaryFire()))
 		self:SetNextSecondaryFire(math.max((CurTime() + self.SecondaryRof), self:GetNextSecondaryFire()))
+		self:SetNextReload(math.max((CurTime() + self.InterRof), self.NextReloadTime))
+
 		self.LastJumpTime = CurTime()
 		if self:GetOwner():KeyDown(4) then -- crouch binding
 			self:GetOwner():SetVelocity(Vector(0,0,500))
@@ -160,10 +162,12 @@ end
 
 function SWEP:Reload()
 	if self.NextReloadTime <= CurTime() then
-		self:SetNextPrimaryFire(math.max((CurTime() + self.ReloadRof), self:GetNextPrimaryFire()))
-		self.NextReloadTime = CurTime() + self.ReloadRof
+		self:SetNextPrimaryFire(math.max((CurTime() + self.InterRof), self:GetNextPrimaryFire()))
+		self:SetNextSecondaryFire(math.max((CurTime() + self.InterRof), self:GetNextSecondaryFire()))
+		self:SetNextReload(math.max((CurTime() + self.ReloadRof), self.NextReloadTime))
 
 		self:EmitSound(self.ReloadSound)
+		self:EmitSound("Weapon_Crossbow.BoltElectrify")
 		self:GetOwner():DoAttackEvent()
 
 		if SERVER then
@@ -173,15 +177,17 @@ function SWEP:Reload()
 		local owner = self:GetOwner()
 		local pos = owner:GetAimVector()*self.MeleeReach + owner:GetShootPos()
 		local effect = EffectData()
-		effect:SetStart(pos)
-		effect:SetOrigin(pos)
-		effect:SetScale(10)
-		effect:SetRadius(10)
-		effect:SetMagnitude(10)
+		effect:SetStart(owner:GetEyeTrace().HitPos)
+		effect:SetOrigin(owner:GetEyeTrace().HitPos)
+		effect:SetScale(1)
+		effect:SetRadius(1)
+		effect:SetMagnitude(1)
 		if IsValid(owner) then
 			if CLIENT then
-				util.Effect("MetalSpark", effect, true, true)
+				util.Effect("ChopperMuzzleFlash", effect, true, true)
 			end
+			util.BlastDamage(owner, owner, pos, self.MeleeRadius, self.MeleeDamage) -- radius, damage
+			util.BlastDamage(owner, owner, pos, self.MeleeRadius, self.MeleeDamage) -- radius, damage
 			util.BlastDamage(owner, owner, pos, self.MeleeRadius, self.MeleeDamage) -- radius, damage
 			util.BlastDamage(owner, owner, pos, self.MeleeRadius, self.MeleeDamage) -- radius, damage
 		end
@@ -206,7 +212,7 @@ function SWEP:ThrowProp(model_file, force_mult, prop_duration, weight_mult)
 	else
 		magic_prop:SetModel(model_file)
 		magic_prop:SetName(MY_BARREL_NAME)
-		magic_prop:SetColor(Color(0,255,0))
+		magic_prop:SetColor(Color(255,255,255))
 	end
 
 	-- aiming, positioning
@@ -260,7 +266,7 @@ function freeze(func_ply, pos)
 end
 
 -- handle parry and damage
-SWEP.dtrack = {}
+SWEP.dtrack = {} -- should probably track this in the barrel instead. make SENT
 if SERVER then
 	hook.Add("EntityTakeDamage", "bw_takedamage", function(vic, dmg) 
 		if vic:IsPlayer() then 
@@ -279,6 +285,9 @@ if SERVER then
 						parry_updates(wep, att, vic, dmg)
 					else
 						wep.LastDamageTime = CurTime()
+						net.Start("hitmarker_msg")
+						net.WriteInt(1, 32) -- second arg is number of bits to repesent int with
+						net.Send(att)
 						if dmg:GetInflictor():GetName() == HOT_BARREL_NAME then
 							_explosion(att, vic:GetPos(), 150, 600)
 						elseif cl == "prop_physics" then
@@ -301,10 +310,10 @@ if SERVER then
 		freeze(att, att:GetPos())
 		dmg:SetDamage(0)
 		if IsValid(dmg:GetInflictor()) and dmg:IsDamageType(DMG_CRUSH) then
-			_effect("Sparks", dmg:GetInflictor():GetPos()+Vector(0,0,20),5,1,1)
+			_effect("ElectricSpark", dmg:GetInflictor():GetPos(),2,2,10)
 			dmg:GetInflictor():Remove()
 		else
-			_effect("Sparks", vic:GetShootPos() + vic:GetAimVector()*20,5,1,1)
+			_effect("ElectricSpark", vic:GetShootPos() + vic:GetAimVector()*20,2,2,10)
 		end
 		-- update cooldowns
 		att:GetActiveWeapon():SetNextPrimaryFire(CurTime() + wep.PrimaryRof)
@@ -381,9 +390,12 @@ end
 function SWEP:SetNextReload(val)
 	self.NextReloadTime = val
 end
-
 function SWEP:PreDrop()
 	return self.BaseClass.PreDrop(self)
 end
 
-
+if CLIENT then
+	net.Receive("hitmarker_msg", function()
+		surface.PlaySound("hit.wav")
+	end)
+end
