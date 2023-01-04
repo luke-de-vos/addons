@@ -72,7 +72,7 @@ SWEP.NextReloadTime = 0
 
 SWEP.MeleeReach = 60
 SWEP.MeleeRadius = 55
-SWEP.MeleeDamage = 30
+SWEP.MeleeDamage = 140
 
 SWEP.LastDamageTime = CurTime()
 
@@ -187,9 +187,6 @@ function SWEP:Reload()
 				util.Effect("ChopperMuzzleFlash", effect, true, true)
 			end
 			util.BlastDamage(owner, owner, pos, self.MeleeRadius, self.MeleeDamage) -- radius, damage
-			util.BlastDamage(owner, owner, pos, self.MeleeRadius, self.MeleeDamage) -- radius, damage
-			util.BlastDamage(owner, owner, pos, self.MeleeRadius, self.MeleeDamage) -- radius, damage
-			util.BlastDamage(owner, owner, pos, self.MeleeRadius, self.MeleeDamage) -- radius, damage
 		end
 	end
 end
@@ -287,7 +284,7 @@ if SERVER then
 						wep.LastDamageTime = CurTime()
 						net.Start("hitmarker_msg")
 						net.WriteInt(1, 32) -- second arg is number of bits to repesent int with
-						net.Send(att)
+						if IsValid(att) then net.Send(att) end
 						if dmg:GetInflictor():GetName() == HOT_BARREL_NAME then
 							_explosion(att, vic:GetPos(), 150, 600)
 						elseif cl == "prop_physics" then
