@@ -23,7 +23,7 @@ function ENT:StartTouch(other_ent)
 	if other_ent:IsPlayer() then
 		local wep = other_ent:GetActiveWeapon()
 		if IsValid(wep) and wep:GetPrintName() == "barrel_wand" then
-			other_ent:ChatPrint("Powerup!")
+			other_ent:ChatPrint("Block get!")
 			other_ent:EmitSound("AlyxEMP.Charge")
 			wep.IsHot = true
 			_effect("Sparks", self:GetPos(), 5, 0.5, 0.5)
