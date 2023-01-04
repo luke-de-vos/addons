@@ -21,21 +21,23 @@ end
 
 function ENT:StartTouch(other_ent)
 	if other_ent:IsPlayer() then
-		other_ent:ChatPrint("Powerup!")
-		other_ent:EmitSound("AlyxEMP.Charge")
-		other_ent:SetHealth(other_ent:Health()+500)
-		_effect("Sparks", self:GetPos(), 5, 0.5, 0.5)
-		local respawn_point = self.SpawnPoint
-		self:Remove()
+		local wep = other_ent:GetActiveWeapon()
+		if IsValid(wep) and wep:GetPrintName() == "barrel_wand" then
+			other_ent:ChatPrint("Powerup!")
+			other_ent:EmitSound("AlyxEMP.Charge")
+			wep.IsHot = true
+			_effect("Sparks", self:GetPos(), 5, 0.5, 0.5)
+			local respawn_point = self.SpawnPoint
+			self:Remove()
 
-		-- respawn powerup
-		timer.Simple(5, function()
-			local ent = ents.Create("ent1")
-			if not IsValid(ent) then return end
-			ent.SpawnPoint = respawn_point
-			ent:SetPos(ent.SpawnPoint)
-			ent:Spawn()
-		end)
-
+			-- respawn powerup
+			timer.Simple(5, function()
+				local ent = ents.Create("ent1")
+				if not IsValid(ent) then return end
+				ent.SpawnPoint = respawn_point
+				ent:SetPos(ent.SpawnPoint)
+				ent:Spawn()
+			end)
+		end
 	end
 end
