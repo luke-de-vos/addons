@@ -169,7 +169,7 @@ if SERVER then
             timer.Simple(delay, function() 
                 if IsValid(ply) then
                     RunConsoleCommand("ulx", "respawn", ply:Name()) 
-                    timer.Simple(0.2, function() ply:SetHealth(500) end)
+                    timer.Simple(0.2, function() ply:SetHealth(ply:GetMaxHealth()) end)
                 end
             end)
         end
