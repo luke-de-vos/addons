@@ -23,16 +23,13 @@ if SERVER then
 
 		_drop_hooks()
 		local died_with = {}  -- track what weapon player died with. Equip that weapon on spawn
-
-		for i,ply in ipairs(player.GetAll()) do
-			ply:SetFrags(0)
-		end
 		
 		-- HOOKS
 		-- assign innocent role to every player
 		_add_hook("TTTBeginRound", "ffa_ForceRole", function()
 			for i,ply in ipairs(player.GetAll()) do
 				ply:SetRole(0)
+				ply:SetFrags(0)
 			end
 		end)
 
