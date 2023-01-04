@@ -16,6 +16,7 @@ function ENT:Initialize()
 	self:SetCollisionGroup(COLLISION_GROUP_WEAPON)
 	
 	self:SetTrigger(true)
+	self:DrawShadow(true)
 
 end
 
@@ -24,6 +25,7 @@ function ENT:StartTouch(other_ent)
 		local wep = other_ent:GetActiveWeapon()
 		if IsValid(wep) and wep:GetPrintName() == "barrel_wand" then
 			other_ent:ChatPrint("Block get!")
+			other_ent:AddFrags(1)
 			other_ent:EmitSound("AlyxEMP.Charge")
 			wep.IsHot = true
 			_effect("Sparks", self:GetPos(), 5, 0.5, 0.5)
