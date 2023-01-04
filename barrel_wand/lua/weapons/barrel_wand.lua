@@ -107,6 +107,8 @@ local HOT_PROPS = {
 	--"models/props_junk/Wheebarrow01a.mdl"
 	}
 
+
+
 function SWEP:PrimaryAttack()
 	if self:GetNextPrimaryFire() <= CurTime() then
 		self:SetNextPrimaryFire(math.max((CurTime() + self.PrimaryRof), self:GetNextPrimaryFire()))
@@ -257,80 +259,81 @@ function freeze(func_ply, pos)
 	end)
 end
 
-hook.Add("EntityTakeDamage", "bw_takedamage", function(vic, dmg) -- on take damage. handles parrying and special barrels
-	if SERVER then
+-- handle parry and damage
+SWEP.dtrack = {}
+if SERVER then
+	hook.Add("EntityTakeDamage", "bw_takedamage", function(vic, dmg) 
 		if vic:IsPlayer() then 
 			local wep = vic:GetActiveWeapon()
-			local att = dmg:GetAttacker()
 			if IsValid(wep) and wep:GetPrintName() == 'barrel_wand' then
-				-- check for parry
-				if att:IsPlayer() and vic:SteamID() != att:SteamID() then
-					local diff = CurTime() - wep:GetLastJumpTime() 
-					if diff <= PARRY_WINDOW then
-						wep:SetLastParryTime(CurTime())
-						wep:SendWeaponAnim( ACT_VM_HITCENTER )
-						wep:EmitSound(wep.ParrySound)
-						att:EmitSound(wep.GotParriedSound)
-						freeze(vic, vic:GetPos())
-						freeze(att, att:GetPos())
+				local cl = dmg:GetInflictor():GetClass()
+				local id = dmg:GetInflictor():GetCreationID()
+				if cl == 'prop_physics' then
+					if wep.dtrack[id] != nil then
 						dmg:SetDamage(0)
-						if IsValid(dmg:GetInflictor()) and dmg:IsDamageType(DMG_CRUSH) then
-							_effect("Sparks", dmg:GetInflictor():GetPos()+Vector(0,0,20),5,1,1)
-							dmg:GetInflictor():Remove()
-						else
-							_effect("Sparks", vic:GetShootPos() + vic:GetAimVector()*20,5,1,1)
-						end
-						-- update cooldowns
-						att:GetActiveWeapon():SetNextPrimaryFire(CurTime() + wep.PrimaryRof)
-						wep:SetNextSecondaryFire(CurTime()+0.2)
-						wep:SetNextPrimaryFire(CurTime()+0.05)
-						wep:SetNextReload(CurTime()+0.1)
 					end
 				end
 				if dmg:GetDamage() > 0 then
-					wep.LastDamageTime = CurTime()
-					if dmg:GetInflictor():GetName() == HOT_BARREL_NAME then
-						_explosion(att, vic:GetPos(), 150, 1000)
-					elseif dmg:GetDamageType() == DMG_CRUSH then
-						sound.Play(SMACK_SOUNDS[math.random(#SMACK_SOUNDS)], dmg:GetInflictor():GetPos())
+					local att = dmg:GetAttacker()
+					if att:IsPlayer() and CurTime() - wep:GetLastJumpTime() <= PARRY_WINDOW then
+						parry_updates(wep, att, vic, dmg)
+					else
+						wep.LastDamageTime = CurTime()
+						if dmg:GetInflictor():GetName() == HOT_BARREL_NAME then
+							_explosion(att, vic:GetPos(), 150, 600)
+						elseif cl == "prop_physics" then
+							wep.dtrack[id] = true
+							dmg:SetDamage(400) -- divided by 4 for some reason? does 100 damage
+							sound.Play(SMACK_SOUNDS[math.random(#SMACK_SOUNDS)], dmg:GetInflictor():GetPos())
+						end
 					end
 				end
 			end
 		end
+	end)
+
+	function parry_updates(wep, att, vic, dmg)
+		wep:SetLastParryTime(CurTime())
+		wep:SendWeaponAnim( ACT_VM_HITCENTER )
+		wep:EmitSound(wep.ParrySound)
+		att:EmitSound(wep.GotParriedSound)
+		freeze(vic, vic:GetPos())
+		freeze(att, att:GetPos())
+		dmg:SetDamage(0)
+		if IsValid(dmg:GetInflictor()) and dmg:IsDamageType(DMG_CRUSH) then
+			_effect("Sparks", dmg:GetInflictor():GetPos()+Vector(0,0,20),5,1,1)
+			dmg:GetInflictor():Remove()
+		else
+			_effect("Sparks", vic:GetShootPos() + vic:GetAimVector()*20,5,1,1)
+		end
+		-- update cooldowns
+		att:GetActiveWeapon():SetNextPrimaryFire(CurTime() + wep.PrimaryRof)
+		wep:SetNextSecondaryFire(CurTime()+0.2)
+		wep:SetNextPrimaryFire(CurTime()+0.05)
+		wep:SetNextReload(CurTime()+0.1)
 	end
-end)
+end
 
 function SWEP:AddPhysicsCallback(magic_prop, owner, MY_BARREL_NAME)
-	if magic_prop:GetName() == HOT_BARREL_NAME then
-		magic_prop:AddCallback("PhysicsCollide", function(ent, data)
-			local hit_ent = data.HitEntity
-			if string.sub(hit_ent:GetName(), 0, PREFIX_LEN) == WAND_PROP_PREFIX then
-				hit_ent:Remove()
+	magic_prop:AddCallback("PhysicsCollide", function(ent, data)
+		local hit_ent = data.HitEntity
+		if hit_ent:GetName() == MY_BARREL_NAME || hit_ent:GetName() == HOT_BARREL_NAME then
+			if IsFirstTimePredicted() then
+				_explosion(owner, data.HitPos, 150, 300) -- radius, damage
 			end
-			print('xxxxxxxxxxxx')	
-			-- if data.DeltaTime > 0.5 then
-			-- 	_explosion(owner, data.HitPos, 150, 125) -- radius, damage
-			-- end
-		end)
-	else
-		magic_prop:AddCallback("PhysicsCollide", function(ent, data)
-			local hit_ent = data.HitEntity
-			if hit_ent:GetName() == MY_BARREL_NAME || hit_ent:GetName() == HOT_BARREL_NAME then
-				_explosion(owner, data.HitPos, 150, 200) -- radius, damage
-				if IsValid(magic_prop) then magic_prop:Remove() end
-			else
-				if data.OurOldVelocity:Length() >= 700 then -- minimum speed for barrel collision effects
-					if string.sub(hit_ent:GetName(), 0, PREFIX_LEN) == WAND_PROP_PREFIX then
-						if IsFirstTimePredicted() then
-							sound.Play(CLANK_SOUNDS[math.random(#CLANK_SOUNDS)], data.HitPos, 75, 100, 1)
-							--_spark(data.HitPos)
-							_effect("MetalSpark", data.HitPos, 1, 1, 1)
-						end
+			if IsValid(magic_prop) then magic_prop:Remove() end
+		else
+			if data.OurOldVelocity:Length() >= 700 then -- minimum speed for barrel collision effects
+				if string.sub(hit_ent:GetName(), 0, PREFIX_LEN) == WAND_PROP_PREFIX then
+					if IsFirstTimePredicted() then
+						sound.Play(CLANK_SOUNDS[math.random(#CLANK_SOUNDS)], data.HitPos, 75, 100, 1)
+						--_spark(data.HitPos)
+						_effect("MetalSpark", data.HitPos, 1, 1, 1)
 					end
 				end
 			end
-		end)
-	end
+		end
+	end)
 end
 
 -- HEALTH REGEN
