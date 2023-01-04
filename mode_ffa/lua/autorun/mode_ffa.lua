@@ -62,7 +62,7 @@ if SERVER then
 			-- killer gets a mag for current weapon
 			if (attacker:IsPlayer() and attacker:UserID() ~= ply:UserID() ) then 
 				_give_current_ammo(attacker, 1)
-				attacker:AddFrags(1)
+				--attacker:AddFrags(1)
 			end
 			-- do not drop weapons
 			if IsValid(ply:GetActiveWeapon()) then ply:GetActiveWeapon():Remove() end
