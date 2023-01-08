@@ -39,7 +39,7 @@ if SERVER then
 						local r = math.random()
 						if r <= 0.01 then -- do leap
 							ply:SetEyeAngles((target:GetPos() + Vector(0,0,500) - ply:GetPos()):Angle())
-							attempt_attack(ply, 2)
+							attempt_attack(ply, 2) 
 						elseif r <= 0.50 then -- attack
 							local posdiff = target:GetPos() - ply:GetPos() + VectorRand(-20,20)
 							ply:SetEyeAngles(posdiff:Angle())
