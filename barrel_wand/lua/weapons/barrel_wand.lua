@@ -13,7 +13,7 @@ end
 SWEP.Base = "weapon_tttbase"
 
 SWEP.ShootSound = 	Sound("Weapon_Crossbow.BoltFly")
-SWEP.ReloadSound = 	Sound("Weapon_Crowbar.Single")
+SWEP.ReloadSound = 	Sound("Weapon_Crossbow.BoltElectrify")
 SWEP.HotSound = "Weapon_PhysCannon.Launch"
 SWEP.ParrySound = "parry_44.wav"
 SWEP.GotParriedSound = Sound("Weapon_StunStick.Activate")
@@ -167,7 +167,6 @@ function SWEP:Reload()
 		self:SetNextReload(math.max((CurTime() + self.ReloadRof), self.NextReloadTime))
 
 		self:EmitSound(self.ReloadSound)
-		self:EmitSound("Weapon_Crossbow.BoltElectrify")
 		self:GetOwner():DoAttackEvent()
 
 		if SERVER then
@@ -176,15 +175,24 @@ function SWEP:Reload()
 
 		local owner = self:GetOwner()
 		local pos = owner:GetAimVector()*self.MeleeReach + owner:GetShootPos()
-		local effect = EffectData()
-		effect:SetEntity(self)
-		effect:SetEntity(owner)
-		effect:SetAttachment(2)
 		if IsValid(owner) then
 			if CLIENT then
-				util.Effect("StriderMuzzleFlash", effect, true, true)
+				local eff = EffectData()
+				eff:SetEntity(self)
+				eff:SetEntity(owner)
+				eff:SetAttachment(2)
+				util.Effect("StriderMuzzleFlash", eff, true, true)
 			end
-			util.BlastDamage(owner, owner, pos, self.MeleeRadius, self.MeleeDamage) -- radius, damage
+			if SERVER then
+				local eff = EffectData()
+				eff:SetOrigin(pos)
+				eff:SetScale(1)
+				eff:SetMagnitude(1)
+				eff:SetFlags(40)
+				--util.Effect("explosion", eff, true, true)
+				--_effect("Explosion", pos, 50, 50, 50)
+				util.BlastDamage(self, owner, pos, self.MeleeRadius, self.MeleeDamage) -- radius, damage
+			end
 		end
 	end
 end
@@ -274,7 +282,7 @@ if SERVER then
 						dmg:SetDamage(0)
 					end
 				end
-				if dmg:IsExplosionDamage() and cl == "player" then
+				if dmg:IsExplosionDamage() and cl == "barrel_wand" then
 					dmg:SetDamage(wep.MeleeDamage)
 				end
 				if dmg:GetDamage() > 0 then
@@ -289,7 +297,7 @@ if SERVER then
 							if IsValid(att) then net.Send(att) end
 						end
 						if dmg:GetInflictor():GetName() == HOT_BARREL_NAME then
-							_explosion(att, vic:GetPos(), 150, 600)
+							_explosion(att, dmg:GetInflictor(), vic:GetPos(), 150, 600)
 						elseif cl == "prop_physics" then
 							wep.dtrack[id] = true
 							dmg:SetDamage(400) -- divided by 4 for some reason? does 100 damage
@@ -328,7 +336,7 @@ function SWEP:AddPhysicsCallback(magic_prop, owner, MY_BARREL_NAME)
 		local hit_ent = data.HitEntity
 		if hit_ent:GetName() == MY_BARREL_NAME || hit_ent:GetName() == HOT_BARREL_NAME then
 			if IsFirstTimePredicted() then
-				_explosion(owner, data.HitPos, 150, 300) -- radius, damage
+				_explosion(owner, magic_prop, data.HitPos, 150, 300) -- radius, damage
 			end
 			if IsValid(magic_prop) then magic_prop:Remove() end
 		else
@@ -362,14 +370,14 @@ function SWEP:Equip()
 	end
 end
 
--- function SWEP:Holster()
--- 	-- if SERVER then
--- 	-- 	if IsValid(self:GetOwner()) then
--- 	-- 		self:GetOwner():SetMaxHealth(100)
--- 	-- 		self:GetOwner():SetHealth(100)
--- 	-- 	end
--- 	-- end
--- end
+function SWEP:Holster()
+	if SERVER then
+		if IsValid(self:GetOwner()) then
+			self:GetOwner():SetMaxHealth(100)
+			self:GetOwner():SetHealth(100)
+		end
+	end
+end
 
 -- function SWEP:OnRemove()
 -- 	-- self:Holster()

@@ -78,7 +78,7 @@ if SERVER then
         util.Effect(effect_name, effect, true, true)
     end
 
-    function _explosion(attacker, pos, radius, damage)
+    function _explosion(attacker, inflictor, pos, radius, damage)
         local effect = EffectData()
         effect:SetStart(pos)
         effect:SetOrigin(pos)
@@ -87,7 +87,7 @@ if SERVER then
         effect:SetMagnitude(1)
         if IsValid(attacker) then
             util.Effect("Explosion", effect, true, true)
-            util.BlastDamage(attacker, attacker, pos, radius, damage) -- radius, damage
+            util.BlastDamage(attacker, inflictor, pos, radius, damage) -- radius, damage
         end
     end
 
