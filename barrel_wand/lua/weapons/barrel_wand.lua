@@ -297,7 +297,7 @@ if SERVER then
 							if IsValid(att) then net.Send(att) end
 						end
 						if dmg:GetInflictor():GetName() == HOT_BARREL_NAME then
-							_explosion(att, dmg:GetInflictor(), vic:GetPos(), 150, 600)
+							_explosion(att, att, vic:GetPos(), 150, 600)
 						elseif cl == "prop_physics" then
 							wep.dtrack[id] = true
 							dmg:SetDamage(400) -- divided by 4 for some reason? does 100 damage
@@ -335,10 +335,12 @@ function SWEP:AddPhysicsCallback(magic_prop, owner, MY_BARREL_NAME)
 	magic_prop:AddCallback("PhysicsCollide", function(ent, data)
 		local hit_ent = data.HitEntity
 		if hit_ent:GetName() == MY_BARREL_NAME || hit_ent:GetName() == HOT_BARREL_NAME then
-			if IsFirstTimePredicted() then
-				_explosion(owner, magic_prop, data.HitPos, 150, 300) -- radius, damage
+			if data.DeltaTime > 0.1 then -- ignore when many collision are quickly reported
+				if IsValid(magic_prop) then magic_prop:Remove() end
+				if IsFirstTimePredicted() then
+					_explosion(owner, owner, data.HitPos, 150, 300) -- radius, damage
+				end
 			end
-			if IsValid(magic_prop) then magic_prop:Remove() end
 		else
 			if data.OurOldVelocity:Length() >= 700 then -- minimum speed for barrel collision effects
 				if string.sub(hit_ent:GetName(), 0, PREFIX_LEN) == WAND_PROP_PREFIX then
