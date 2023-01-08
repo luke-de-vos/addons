@@ -72,7 +72,7 @@ SWEP.NextReloadTime = 0
 
 SWEP.MeleeReach = 60
 SWEP.MeleeRadius = 55
-SWEP.MeleeDamage = 140
+SWEP.MeleeDamage = 150
 
 SWEP.LastDamageTime = CurTime()
 
@@ -177,14 +177,12 @@ function SWEP:Reload()
 		local owner = self:GetOwner()
 		local pos = owner:GetAimVector()*self.MeleeReach + owner:GetShootPos()
 		local effect = EffectData()
-		effect:SetStart(owner:GetEyeTrace().HitPos)
-		effect:SetOrigin(owner:GetEyeTrace().HitPos)
-		effect:SetScale(1)
-		effect:SetRadius(1)
-		effect:SetMagnitude(1)
+		effect:SetEntity(self)
+		effect:SetEntity(owner)
+		effect:SetAttachment(2)
 		if IsValid(owner) then
 			if CLIENT then
-				util.Effect("ChopperMuzzleFlash", effect, true, true)
+				util.Effect("StriderMuzzleFlash", effect, true, true)
 			end
 			util.BlastDamage(owner, owner, pos, self.MeleeRadius, self.MeleeDamage) -- radius, damage
 		end
@@ -276,6 +274,9 @@ if SERVER then
 						dmg:SetDamage(0)
 					end
 				end
+				if dmg:IsExplosionDamage() and cl == "player" then
+					dmg:SetDamage(wep.MeleeDamage)
+				end
 				if dmg:GetDamage() > 0 then
 					local att = dmg:GetAttacker()
 					if att:IsPlayer() and CurTime() - wep:GetLastJumpTime() <= PARRY_WINDOW then
@@ -356,7 +357,7 @@ end
 
 function SWEP:Equip()
 	if IsValid(self:GetOwner()) then
-		self:GetOwner():SetMaxHealth(300)
+		self:GetOwner():SetMaxHealth(200)
 		self.LastDamageTime = CurTime()
 	end
 end
