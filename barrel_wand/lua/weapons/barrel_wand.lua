@@ -13,7 +13,8 @@ end
 SWEP.Base = "weapon_tttbase"
 
 SWEP.ShootSound = 	Sound("Weapon_Crossbow.BoltFly")
-SWEP.ReloadSound = 	Sound("Weapon_Crossbow.BoltElectrify")
+--SWEP.ReloadSound = 	Sound("Weapon_Crossbow.BoltElectrify")
+SWEP.ReloadSound = 	Sound("Weapon_StunStick.Melee_Hit") -- Weapon_Crowbar.Single
 SWEP.HotSound = "Weapon_PhysCannon.Launch"
 SWEP.ParrySound = "parry_44.wav"
 SWEP.GotParriedSound = Sound("Weapon_StunStick.Activate")
@@ -176,21 +177,13 @@ function SWEP:Reload()
 		local owner = self:GetOwner()
 		local pos = owner:GetAimVector()*self.MeleeReach + owner:GetShootPos()
 		if IsValid(owner) then
-			if CLIENT then
-				local eff = EffectData()
-				eff:SetEntity(self)
-				eff:SetEntity(owner)
-				eff:SetAttachment(2)
-				util.Effect("StriderMuzzleFlash", eff, true, true)
-			end
 			if SERVER then
 				local eff = EffectData()
 				eff:SetOrigin(pos)
 				eff:SetScale(1)
 				eff:SetMagnitude(1)
-				eff:SetFlags(40)
-				--util.Effect("explosion", eff, true, true)
-				--_effect("Explosion", pos, 50, 50, 50)
+				eff:SetRadius(1)
+				util.Effect("GunshipImpact", eff, true, true)
 				util.BlastDamage(self, owner, pos, self.MeleeRadius, self.MeleeDamage) -- radius, damage
 			end
 		end
