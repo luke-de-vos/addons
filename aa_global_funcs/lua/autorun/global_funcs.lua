@@ -87,7 +87,7 @@ if SERVER then
         effect:SetMagnitude(1)
         if IsValid(attacker) then
             util.Effect("Explosion", effect, true, true)
-            util.BlastDamage(attacker, inflictor, pos, radius, damage) -- radius, damage
+            util.BlastDamage(inflictor, attacker, pos, radius, damage) -- radius, damage
         end
     end
 
