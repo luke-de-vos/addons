@@ -86,7 +86,7 @@ function SWEP:PrimaryAttack()
     local tr = self.Owner:GetEyeTrace()
 	local hitEnt = nil
 	
-    if (tr.HitPos - self.Owner:GetShootPos()):Length() < 80 then
+    if (tr.HitPos - self.Owner:GetShootPos()):Length() < 70 then
 
 		hitEnt = tr.Entity
 
