@@ -90,11 +90,7 @@ if SERVER then
 	function gungame_on(kills_to_win)
 		-- setup
 		_drop_hooks()
-		someone_already_won = false
 		guns = get_guns_table()
-		for i, ply in ipairs(player.GetAll()) do
-			ply:SetFrags(0)
-		end
 		RunConsoleCommand("ttt_roundtime_minutes", GUN_GAME_ROUND_LEN)
 		RunConsoleCommand("ttt_debug_preventwin", "1")
 		RunConsoleCommand("ttt_preptime_seconds", "2")
@@ -102,9 +98,11 @@ if SERVER then
 		
 		-- HOOKS
 		-- assign innocent role to every player
-		_add_hook("TTTBeginRound", "gg_ForceRole", function()
+		_add_hook("TTTBeginRound", "gg_BeginRound", function()
+			someone_already_won = false
 			for i,ply in ipairs(player.GetAll()) do
 				ply:SetRole(0)
+				ply:SetFrags(0)
 			end
 		end)
 
