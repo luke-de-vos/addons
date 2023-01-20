@@ -284,11 +284,6 @@ if SERVER then
 						parry_updates(wep, att, vic, dmg)
 					else
 						wep.LastDamageTime = CurTime()
-						if att:IsPlayer() then
-							net.Start("hitmarker_msg")
-							net.WriteInt(1, 32) -- second arg is number of bits to repesent int with
-							if IsValid(att) then net.Send(att) end
-						end
 						if dmg:GetInflictor():GetName() == HOT_BARREL_NAME then
 							_explosion(att, att, vic:GetPos(), 150, 600)
 						elseif cl == "prop_physics" then
