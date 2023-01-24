@@ -356,7 +356,7 @@ function SWEP:AddPhysicsCallback(magic_prop, owner, MY_BARREL_NAME)
 	end)
 end
 
--- HEALTH REGEN
+-- HEALTH REGEN and BLOCK FRAGS
 SWEP.LastPointTime = 0
 function SWEP:Think()
 	if CurTime() - self.LastDamageTime >= 4 then
@@ -367,12 +367,9 @@ function SWEP:Think()
 	end
 	if SERVER then
 		if (self.HasBlock) and (CurTime() - self.LastPointTime) >= 1 then
-			--_effect("HunterTracer", self:GetOwner():GetPos(), 2, 2, 2)
-			local ceffect = EffectData()
 			local owner = self:GetOwner()
 			owner:AddFrags(1)
 			self.LastPointTime = CurTime()
-			--self:GetOwner():EmitSound("Weapon_Crossbow.BoltFly")
 			if owner:Frags() == 100 then
 				PrintMessage(HUD_PRINTCENTER, owner:GetName().." wins!")
 				PrintMessage(HUD_PRINTTALK, owner:GetName().." wins!")
