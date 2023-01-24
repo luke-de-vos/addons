@@ -85,6 +85,8 @@ local PREFIX_LEN = string.len(WAND_PROP_PREFIX)
 local HOT_BARREL_NAME = WAND_PROP_PREFIX.."hot_barrel"
 local HOT_BARREL_COST = 5
 
+SWEP.HasBlock = false
+
 local SMACK_SOUNDS = {
 	"body_medium_impact_hard5.wav",
 	"body_medium_impact_hard4.wav",
@@ -135,6 +137,17 @@ function SWEP:PrimaryAttack()
 			self:ThrowProp("models/props_c17/oildrum001.mdl", self.ThrowForce, self.PropDuration, 1.0)
 			self.IsHot = false
 		end
+	end
+end
+
+function SWEP:IsFacing(target_pos)
+	local pos_angle_yaw = (target_pos - self:GetOwner():GetPos()):Angle().yaw
+	local look_angle_yaw = self:GetOwner():GetAimVector():Angle().yaw
+	local degrees = look_angle_yaw - pos_angle_yaw
+	if degrees >= -80 and degrees <= 80 then
+		return true
+	else
+		return false
 	end
 end
 
@@ -255,7 +268,7 @@ function freeze(func_ply, pos)
 			move_info:SetOrigin(pos)
 		end
 	end)
-	timer.Simple(0.2, function()
+	timer.Simple(0.15, function()
 		hook.Remove("Move", hook_name)
 		func_ply:SetMoveType(2)
 	end)
@@ -264,7 +277,7 @@ end
 -- handle parry and damage
 SWEP.dtrack = {} -- should probably track this in the barrel instead. make SENT
 if SERVER then
-	hook.Add("EntityTakeDamage", "bw_takedamage", function(vic, dmg) 
+	hook.Add("EntityTakeDamage", "bw_takedamage", function(vic, dmg)
 		if vic:IsPlayer() then 
 			local wep = vic:GetActiveWeapon()
 			if IsValid(wep) and wep:GetPrintName() == 'barrel_wand' then
@@ -280,7 +293,7 @@ if SERVER then
 				end
 				if dmg:GetDamage() > 0 then
 					local att = dmg:GetAttacker()
-					if att:IsPlayer() and CurTime() - wep:GetLastJumpTime() <= PARRY_WINDOW then
+					if att:IsPlayer() and (CurTime() - wep:GetLastJumpTime() <= PARRY_WINDOW) and wep:IsFacing(dmg:GetDamagePosition()) then
 						parry_updates(wep, att, vic, dmg)
 					else
 						wep.LastDamageTime = CurTime()
@@ -306,14 +319,14 @@ if SERVER then
 		freeze(att, att:GetPos())
 		dmg:SetDamage(0)
 		if IsValid(dmg:GetInflictor()) and dmg:IsDamageType(DMG_CRUSH) then
-			_effect("ElectricSpark", dmg:GetInflictor():GetPos(),2,2,10)
+			_effect("ElectricSpark", dmg:GetInflictor():GetPos(), 3,2,3)
 			dmg:GetInflictor():Remove()
 		else
 			_effect("ElectricSpark", vic:GetShootPos() + vic:GetAimVector()*20,2,2,10)
 		end
 		-- update cooldowns
 		att:GetActiveWeapon():SetNextPrimaryFire(CurTime() + wep.PrimaryRof)
-		wep:SetNextSecondaryFire(CurTime()+0.2)
+		wep:SetNextSecondaryFire(CurTime()+0.18)
 		wep:SetNextPrimaryFire(CurTime()+0.05)
 		wep:SetNextReload(CurTime()+0.1)
 	end
@@ -344,11 +357,26 @@ function SWEP:AddPhysicsCallback(magic_prop, owner, MY_BARREL_NAME)
 end
 
 -- HEALTH REGEN
-function SWEP:Think() 
+SWEP.LastPointTime = 0
+function SWEP:Think()
 	if CurTime() - self.LastDamageTime >= 4 then
 		local owner = self:GetOwner()
 		if owner:Health() < owner:GetMaxHealth() then
 			owner:SetHealth(math.min(owner:Health()+2, owner:GetMaxHealth()))
+		end
+	end
+	if SERVER then
+		if (self.HasBlock) and (CurTime() - self.LastPointTime) >= 1 then
+			--_effect("HunterTracer", self:GetOwner():GetPos(), 2, 2, 2)
+			local ceffect = EffectData()
+			local owner = self:GetOwner()
+			owner:AddFrags(1)
+			self.LastPointTime = CurTime()
+			--self:GetOwner():EmitSound("Weapon_Crossbow.BoltFly")
+			if owner:Frags() == 100 then
+				PrintMessage(HUD_PRINTCENTER, owner:GetName().." wins!")
+				PrintMessage(HUD_PRINTTALK, owner:GetName().." wins!")
+			end
 		end
 	end
 end
