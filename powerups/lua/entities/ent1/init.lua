@@ -6,6 +6,8 @@ AddCSLuaFile("cl_init.lua")
 
 include("shared.lua")
 
+block_id = 1 -- initial
+
 function ENT:Initialize()
 	self:SetModel("models/hunter/blocks/cube05x05x05.mdl") --models/props_c17/oildrum001.mdl --models/noesis/donut.mdl
 	self:PhysicsInit(SOLID_VPHYSICS)
@@ -17,31 +19,10 @@ function ENT:Initialize()
 	
 	self:SetTrigger(true)
 	self:DrawShadow(true)
-
-end
-
-function ENT:StartTouch(other_ent)
-	if other_ent:IsPlayer() then
-		local wep = other_ent:GetActiveWeapon()
-		if IsValid(wep) and wep:GetPrintName() == "barrel_wand" then
-			wep.HasBlock = true
-			print(wep.HasBlock)
-			other_ent:ChatPrint("Block get!")
-			other_ent:AddFrags(1)
-			other_ent:EmitSound("AlyxEMP.Charge")
-			wep.IsHot = true
-			_effect("Sparks", self:GetPos(), 5, 1.0, 0.5)
-			local respawn_point = self.SpawnPoint
-			self:Remove()
-			-- -- respawn powerup
-			-- timer.Simple(5, function()
-			-- 	local ent = ents.Create("ent1")
-			-- 	if not IsValid(ent) then return end
-			-- 	ent.SpawnPoint = respawn_point
-			-- 	ent:SetPos(ent.SpawnPoint)
-			-- 	ent:Spawn()
-			-- end)
-		end
+	if SERVER then
+		_effect("Sparks", self:GetPos(), 5, 1.0, 0.5)
+		--sound.Play("Weapon_Crossbow.BoltHitWorld", self:GetPos(), 100, 100, 100)
+		block_id = self:EntIndex()
 	end
-end
 
+end

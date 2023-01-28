@@ -3,20 +3,36 @@ if SERVER then
 end
 ENT.Type = "anim"
 
-ENT.PrintName = "Coin Pickup"
+ENT.PrintName = "Oddblock"
 ENT.Spawnable = true
---ENT.RenderGroup = RENDERGROUP_OPAQUE
+ENT.RenderGroup = RENDERGROUP_OPAQUE
 ENT.SpawnPoint = nil
 
 if SERVER then
-   _add_hook("DoPlayerDeath", "powerup_shared_death", function(victim, attacker, dmg)
-      if victim:GetActiveWeapon():GetClass() == "barrel_wand" then  
-         if victim:GetActiveWeapon().HasBlock then
-            local ent = ents.Create("ent1")
-            if not IsValid(ent) then return end
-            ent:SetPos(victim:GetPos()+Vector(0,0,30))
-            ent:Spawn()
-         end
-      end   
-   end)  
+   function ENT:StartTouch(other_ent)
+      if other_ent:IsPlayer() then
+         RunConsoleCommand("ulx","force",other_ent:Nick(),"detective")
+         block_id = other_ent:EntIndex()
+
+         other_ent:PrintMessage(HUD_PRINTCENTER, "Block get!")
+         other_ent:PrintMessage(HUD_PRINTTALK, other_ent:Nick().." got the block!")
+
+         other_ent:EmitSound("AlyxEMP.Charge")
+         _effect("Sparks", self:GetPos(), 5, 1.0, 0.5)
+
+         self:Remove()
+      end
+   end
 end
+
+-- if CLIENT then
+--    function ENT:Think()
+--       e = EffectData()
+--       e:SetOrigin(self:GetPos())
+--       e:SetMagnitude(0.1)
+--       e:SetScale(0.1)
+--       e:SetRadius(10)
+--       util.Effect("sparks", e, true, true)
+--    end
+-- end
+
