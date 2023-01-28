@@ -1,3 +1,4 @@
+-- original addon: https://steamcommunity.com/sharedfiles/filedetails/?id=2708179435
 AddCSLuaFile()
 SWEP.PrintName = "Swamp Knife"
 SWEP.Category = "dougie's SWEPs"
