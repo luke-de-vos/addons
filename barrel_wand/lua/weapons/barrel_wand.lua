@@ -85,8 +85,6 @@ local PREFIX_LEN = string.len(WAND_PROP_PREFIX)
 local HOT_BARREL_NAME = WAND_PROP_PREFIX.."hot_barrel"
 local HOT_BARREL_COST = 5
 
-SWEP.HasBlock = false
-
 local SMACK_SOUNDS = {
 	"body_medium_impact_hard5.wav",
 	"body_medium_impact_hard4.wav",
