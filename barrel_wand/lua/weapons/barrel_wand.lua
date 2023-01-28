@@ -359,21 +359,10 @@ end
 -- HEALTH REGEN and BLOCK FRAGS
 SWEP.LastPointTime = 0
 function SWEP:Think()
-	if CurTime() - self.LastDamageTime >= 4 then
+	if CurTime() - self.LastDamageTime >= 6 then
 		local owner = self:GetOwner()
 		if owner:Health() < owner:GetMaxHealth() then
 			owner:SetHealth(math.min(owner:Health()+2, owner:GetMaxHealth()))
-		end
-	end
-	if SERVER then
-		if (self.HasBlock) and (CurTime() - self.LastPointTime) >= 1 then
-			local owner = self:GetOwner()
-			owner:AddFrags(1)
-			self.LastPointTime = CurTime()
-			if owner:Frags() == 100 then
-				PrintMessage(HUD_PRINTCENTER, owner:GetName().." wins!")
-				PrintMessage(HUD_PRINTTALK, owner:GetName().." wins!")
-			end
 		end
 	end
 end
