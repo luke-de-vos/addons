@@ -219,3 +219,21 @@ if SERVER then
         mode_hooks = {}
     end
 end
+
+
+-- spawn geagle(s)
+if SERVER then
+    hook.Add("TTTBeginRound", "spawn_1_geagle", function()
+        local options = {}
+        for i, ent in ipairs(ents.GetAll()) do
+            if ent:IsWeapon() then
+                table.insert(options, ent:GetPos())
+            end
+        end
+        if #options >= 1 then
+            local geagle = ents.Create("weapon_ttt_powerdeagle")
+            geagle:SetPos(options[math.random(#options)] + Vector(0,0,30))
+            geagle:Spawn()
+        end
+    end)
+end
