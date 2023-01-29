@@ -142,7 +142,7 @@ function SWEP:IsFacing(target_pos)
 	local pos_angle_yaw = (target_pos - self:GetOwner():GetPos()):Angle().yaw
 	local look_angle_yaw = self:GetOwner():GetAimVector():Angle().yaw
 	local degrees = look_angle_yaw - pos_angle_yaw
-	if degrees >= -80 and degrees <= 80 then
+	if degrees >= -70 and degrees <= 70 then
 		return true
 	else
 		return false
