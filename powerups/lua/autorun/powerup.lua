@@ -22,6 +22,11 @@ end
 
 function pups_on()
 	if SERVER then
+
+		_add_hook('TTTBeginRound', "get_da_block", function()
+			PrintMessage(HUD_PRINTCENTER, "GET THE BLOCK")
+		end)
+
 		util.AddNetworkString("powerup_waypoint_msg")
 		-- block initial spawn
 		_add_hook('TTTBeginRound', "spawn_pups", function()
@@ -44,6 +49,9 @@ function pups_on()
 				if IsValid(ent) then
 					if ent:IsPlayer() then
 						ent:AddFrags(1)
+						if ent:Frags() < 200 then
+							ent:ChatPrint(ent:Frags().." (+1)")
+						end
 						if ent:Frags() == 200 then
 							PrintMessage(HUD_PRINTCENTER, ent:Nick().." wins!")
 						end
@@ -75,8 +83,11 @@ function pups_on()
 			-- bonus points if block holder got the kill
 			if attacker:IsPlayer() and attacker:GetRole() == 2 then
 				attacker:AddFrags(10)
-				if ent:Frags() == 200 then
-					PrintMessage(HUD_PRINTCENTER, ent:Nick().." wins!")
+				if attacker:Frags() < 200 then
+					attacker:ChatPrint(attacker:Frags().." (+10)")
+				end
+				if attacker:Frags() >= 200 and attacker:Frags() <= 210 then
+					PrintMessage(HUD_PRINTCENTER, attacker:Nick().." wins!")
 				end
 			end
 		end)
