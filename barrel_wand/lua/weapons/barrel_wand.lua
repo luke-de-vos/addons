@@ -12,49 +12,49 @@ end
 
 SWEP.Base = "weapon_tttbase"
 
-SWEP.ShootSound = 	Sound("Weapon_Crossbow.BoltFly")
+SWEP.ShootSound = Sound("Weapon_Crossbow.BoltFly")
 --SWEP.ReloadSound = 	Sound("Weapon_Crossbow.BoltElectrify")
-SWEP.ReloadSound = 	Sound("Weapon_StunStick.Melee_Hit") -- Weapon_Crowbar.Single
+SWEP.ReloadSound = Sound("Weapon_StunStick.Melee_Hit") -- Weapon_Crowbar.Single
 SWEP.HotSound = "Weapon_PhysCannon.Launch"
 SWEP.ParrySound = "parry_44.wav"
 SWEP.GotParriedSound = Sound("Weapon_StunStick.Activate")
 SWEP.HitSound = Sound("Hit")
 
-SWEP.ViewModel			= "models/weapons/c_stunstick.mdl"
-SWEP.WorldModel			= "models/weapons/c_stunstick.mdl"
+SWEP.ViewModel = "models/weapons/c_stunstick.mdl"
+SWEP.WorldModel = "models/weapons/c_stunstick.mdl"
 SWEP.UseHands = true
 
 if CLIENT then
-	SWEP.PrintName		=	"Barrel Wand"
-	SWEP.Slot			=	7
-	SWEP.Icon 			=	"VGUI/ttt/icon_barrel_wand.jpg"
-	SWEP.DrawAmmo		=	true 
-	SWEP.DrawCrosshair	=	false -- ttt2 draws crosshair
+	SWEP.PrintName = "Barrel Wand"
+	SWEP.Slot = 7
+	SWEP.Icon = "VGUI/ttt/icon_barrel_wand.jpg"
+	SWEP.DrawAmmo = true 
+	SWEP.DrawCrosshair = false -- ttt2 draws crosshair
 	
-	SWEP.ViewModelFlip       = false
-	SWEP.ViewModelFOV        = 54
+	SWEP.ViewModelFlip = false
+	SWEP.ViewModelFOV = 54
 	SWEP.EquipMenuData = {
 		type = "item_weapon",
 		desc = "abra kadabison"
 	};
 end
 
-SWEP.Spawnable		=	true
+SWEP.Spawnable = true
 
-SWEP.Primary.ClipSize		= 1
-SWEP.Primary.DefaultClip	= 0
-SWEP.Primary.Automatic		= true
-SWEP.Primary.Ammo		= "RPG_Round"
+SWEP.Primary.ClipSize = 1
+SWEP.Primary.DefaultClip = 0
+SWEP.Primary.Automatic = true
+SWEP.Primary.Ammo = "RPG_Round"
 
-SWEP.Secondary.ClipSize		= 2
-SWEP.Secondary.DefaultClip	= 2
-SWEP.Secondary.Automatic	= true
-SWEP.Secondary.Ammo		= "RPG_Round"
+SWEP.Secondary.ClipSize	= 2
+SWEP.Secondary.DefaultClip = 2
+SWEP.Secondary.Automatic = true
+SWEP.Secondary.Ammo	= "RPG_Round"
 
-SWEP.Kind                   = WEAPON_EQUIP2
-SWEP.CanBuy                 = {ROLE_TRAITOR, ROLE_INNOCENT, ROLE_DETECTIVE}
-SWEP.LimitedStock           = true
-SWEP.WeaponID               = BARREL_WAND
+SWEP.Kind = WEAPON_EQUIP2
+SWEP.CanBuy = {ROLE_TRAITOR, ROLE_INNOCENT, ROLE_DETECTIVE}
+SWEP.LimitedStock = true
+SWEP.WeaponID = BARREL_WAND
 
 SWEP.HoldType = "melee" -- https://wiki.facepunch.com/gmod/Hold_Types
 
