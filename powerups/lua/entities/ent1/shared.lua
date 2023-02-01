@@ -20,6 +20,9 @@ if SERVER then
          other_ent:EmitSound("AlyxEMP.Charge")
          _effect("Sparks", self:GetPos(), 5, 1.0, 0.5)
 
+         other_ent:SetMaxHealth(100)
+         other_ent:SetHealth(100)
+
          self:Remove()
       end
    end

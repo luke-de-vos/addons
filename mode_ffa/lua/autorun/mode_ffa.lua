@@ -14,7 +14,8 @@ if SERVER then
 	hook.Add("PlayerSay", "custom_commands_ffa", function(sender, text, teamChat)
 		if sender:GetUserGroup() ~= "user" then
 			if text == "!ffa" then ffa_on()
-			elseif text == "!ttt" then reg_ttt() end
+			elseif text == "!ttt" then reg_ttt() 
+			elseif text == "!block" then ffa_on() pups_on() end
 		end
 	end)
 
@@ -75,6 +76,7 @@ if SERVER then
 		-- on kill: play headshot effect, print killfeed, begin respawn
 		_add_hook("PlayerDeath", "ffa_PlayerDeath", function(victim, inflictor, attacker)
 			if (attacker:IsPlayer()) then
+				attacker:AddFrags(1)
 				if victim:LastHitGroup() == 1 then
 					if inflictor:IsWeapon() and inflictor:GetPrintName() == "barrel_wand" then
 						print('x')
