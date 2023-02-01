@@ -195,6 +195,7 @@ function SWEP:Reload()
 				eff:SetMagnitude(1)
 				eff:SetRadius(1)
 				util.Effect("GunshipImpact", eff, true, true)
+				_effect("Sparks", pos, 3, 1, 1)
 				util.BlastDamage(self, owner, pos, self.MeleeRadius, self.MeleeDamage) -- radius, damage
 			end
 		end
