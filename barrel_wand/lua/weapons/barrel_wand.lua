@@ -355,8 +355,7 @@ function SWEP:AddPhysicsCallback(magic_prop, owner, MY_BARREL_NAME)
 	end)
 end
 
--- HEALTH REGEN and BLOCK FRAGS
-SWEP.LastPointTime = 0
+-- HEALTH REGEN and BLOCK FRAG
 function SWEP:Think()
 	if CurTime() - self.LastDamageTime >= 6 then
 		local owner = self:GetOwner()
