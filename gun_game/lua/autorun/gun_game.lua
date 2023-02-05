@@ -99,6 +99,7 @@ if SERVER then
 		-- HOOKS
 		-- assign innocent role to every player
 		_add_hook("TTTBeginRound", "gg_BeginRound", function()
+			PrintMessage(HUD_PRINTCENTER, "GUN GAME")
 			someone_already_won = false
 			for i,ply in ipairs(player.GetAll()) do
 				ply:SetRole(0)
