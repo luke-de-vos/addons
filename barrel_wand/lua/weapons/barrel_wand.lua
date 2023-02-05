@@ -355,20 +355,25 @@ function SWEP:AddPhysicsCallback(magic_prop, owner, MY_BARREL_NAME)
 	end)
 end
 
--- HEALTH REGEN and BLOCK FRAG
+-- HEALTH REGEN
 function SWEP:Think()
-	if CurTime() - self.LastDamageTime >= 6 then
+	if SERVER then
 		local owner = self:GetOwner()
-		if owner:Health() < owner:GetMaxHealth() then
-			owner:SetHealth(math.min(owner:Health()+2, owner:GetMaxHealth()))
+		if owner:Health() != owner:GetMaxHealth() then
+			if CurTime() - self.LastDamageTime >= 4 then
+				owner:SetHealth(owner:Health() + 1)
+			end
 		end
 	end
 end
 
-function SWEP:Equip()
-	if IsValid(self:GetOwner()) then
-		self:GetOwner():SetMaxHealth(200)
-		self.LastDamageTime = CurTime()
+function SWEP:Deploy()
+	if SERVER then
+		if IsValid(self:GetOwner()) then
+			self:GetOwner():SetMaxHealth(200)
+			self:GetOwner():SetHealth(200)
+			self.LastDamageTime = CurTime()
+		end
 	end
 end
 
@@ -379,11 +384,9 @@ function SWEP:Holster()
 			self:GetOwner():SetHealth(100)
 		end
 	end
+	return true
 end
 
--- function SWEP:OnRemove()
--- 	-- self:Holster()
--- end
 
 function SWEP:GetLastJumpTime()
 	return self.LastJumpTime
