@@ -370,9 +370,11 @@ end
 function SWEP:Deploy()
 	if SERVER then
 		if IsValid(self:GetOwner()) then
-			self:GetOwner():SetMaxHealth(200)
-			self:GetOwner():SetHealth(200)
-			self.LastDamageTime = CurTime()
+			if self:GetOwner():GetRole() != 2 then
+				self:GetOwner():SetMaxHealth(200)
+				self:GetOwner():SetHealth(200)
+				self.LastDamageTime = CurTime()
+			end
 		end
 	end
 end

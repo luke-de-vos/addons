@@ -78,10 +78,7 @@ if SERVER then
 			if (attacker:IsPlayer()) then
 				attacker:AddFrags(1)
 				if victim:LastHitGroup() == 1 then
-					if inflictor:IsWeapon() and inflictor:GetPrintName() == "barrel_wand" then
-						print('x')
-					else
-						print('y')
+					if inflictor:GetClass() != 'prop_physics' then
 						_headshot_effect(victim)
 					end
 				end
