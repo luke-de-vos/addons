@@ -117,19 +117,6 @@ local CLANK_SOUNDS = {
 	"physics/metal/metal_barrel_impact_soft3.wav",
 	"physics/metal/metal_barrel_impact_soft4.wav"
 }
-local HOT_PROPS = {
-	"models/props_c17/oildrum001.mdl",
-	--"models/props_interiors/Furniture_Couch01a.mdl",
-	--"models/props_c17/FurnitureChair001a.mdl",
-	--"models/props_c17/FurnitureWashingmachine001a.mdl",
-	--"models/props_c17/chair02a.mdl",
-	--"models/props_lab/filecabinet02.mdl",
-	--"models/props_junk/watermelon01.mdl",
-	--"models/props_lab/huladoll.mdl",
-	--"models/props_junk/Wheebarrow01a.mdl"
-	}
-
-
 
 function SWEP:PrimaryAttack()
 	if self:GetNextPrimaryFire() <= CurTime() then
@@ -237,12 +224,11 @@ function SWEP:ThrowProp(model_file, force_mult, prop_duration, weight_mult)
 
 	-- name, model
 	MY_BARREL_NAME = WAND_PROP_PREFIX..self:GetOwner():SteamID()
+	magic_prop:SetModel(model_file)
 	if self.IsHot then
-		magic_prop:SetModel(HOT_PROPS[math.random(#HOT_PROPS)])
 		magic_prop:SetName(HOT_BARREL_NAME)
 		magic_prop:SetColor(Color(255,0,0))
 	else
-		magic_prop:SetModel(model_file)
 		magic_prop:SetName(MY_BARREL_NAME)
 		magic_prop:SetColor(Color(255,255,255))
 	end
