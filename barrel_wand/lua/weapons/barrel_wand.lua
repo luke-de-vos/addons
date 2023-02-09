@@ -1,3 +1,24 @@
+/*
+barrels
+	make player's barrels different color
+
+throwprop speed
+	When I throw a barrel, the time it takes to spawn and propel the barrel seems inconsistent
+		find a way to precisely measure this? Might be easier to measure with a high frame rate video tbh
+	Consistency aside, can it be faster? Is there lag beyond just client to server lag?
+	Perhaps it would be faster if ThrowProp does not include the creation of the barrel entity.
+		Each barrel wand, on Equip(), creates 5 barrel ents (without spawning)
+			yo what if I actually spawn them deep underground and throwprop teleports them to the "spawn" point lol
+		each throwprop 
+			increments position in table of barrel entity ids
+			spawns/updates barrel pos
+	make a separate function to test this out and compare throwprop and throwprop2 side by side
+	
+
+hitmarker sound
+	fix me. also make me a universal thing for guns etc.
+*/
+
 print("Executed lua: " .. debug.getinfo(1,'S').source)
 
 if SERVER then
@@ -139,6 +160,9 @@ function SWEP:PrimaryAttack()
 end
 
 function SWEP:IsFacing(target_pos)
+	-- change this to compare swep owner aim vector to barrel velocity vector if possible
+	-- will prevent parries failing due to damage position being on side of player despite
+	-- inflictor coming from in front of player
 	local pos_angle_yaw = (target_pos - self:GetOwner():GetPos()):Angle().yaw
 	local look_angle_yaw = self:GetOwner():GetAimVector():Angle().yaw
 	local degrees = look_angle_yaw - pos_angle_yaw
