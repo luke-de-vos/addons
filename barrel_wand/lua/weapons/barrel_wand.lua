@@ -237,12 +237,7 @@ function SWEP:ThrowProp(model_file, force_mult, prop_duration, weight_mult)
 	end
 
 	-- aiming, positioning
-	local aimvec = owner:GetAimVector()
-	local spawn_pos = owner:EyePos()
-	spawn_pos.z = spawn_pos.z - 10 -- lower below eye level
-	spawn_pos:Add((aimvec * 32))
-	magic_prop:SetPos(spawn_pos)
-	magic_prop:SetAngles(owner:EyeAngles())
+	self:SetPropPosAndAngles(magic_prop, owner)
 	
 	-- physics
 	magic_prop:SetPhysicsAttacker(owner, prop_duration) -- credits player for kill
@@ -250,9 +245,6 @@ function SWEP:ThrowProp(model_file, force_mult, prop_duration, weight_mult)
 
 	-- spawn
 	magic_prop:Spawn()
-	if self.IsHot then 
-		magic_prop:Ignite(prop_duration, 100)
-	end
 	local phys = magic_prop:GetPhysicsObject()
 	if not IsValid(phys) then magic_prop:Remove() return end
  
@@ -261,6 +253,10 @@ function SWEP:ThrowProp(model_file, force_mult, prop_duration, weight_mult)
 	local impulse = aimvec * phys:GetMass() * force_mult
 	--aimvec:Add( VectorRand( -10, 10 ) ) -- Add a random vector with elements [-10, 10)
 	phys:ApplyForceCenter(impulse * engine.TickInterval()) 
+
+	if self.IsHot then 
+		magic_prop:Ignite(prop_duration, 100)
+	end
 
 	-- despawn
 	timer.Simple(prop_duration, function() 
@@ -402,26 +398,6 @@ function SWEP:Holster()
 	return true
 end
 
-
-function SWEP:GetLastJumpTime()
-	return self.LastJumpTime
-end
-function SWEP:SetLastJumpTime(val)
-	self.LastJumpTime = val
-end
-function SWEP:GetLastParryTime()
-	return self.LastParryTime
-end
-function SWEP:SetLastParryTime(val)
-	self.LastParryTime = val
-end
-function SWEP:SetNextReload(val)
-	self.NextReloadTime = val
-end
-function SWEP:PreDrop()
-	return self.BaseClass.PreDrop(self)
-end
-
 if CLIENT then
 	net.Receive("hitmarker_msg", function()
 		surface.PlaySound("hit.wav")
@@ -489,3 +465,23 @@ end
 function SWEP:ThrowCachedProp()
 
 end
+
+
+function SWEP:GetLastJumpTime()
+	return self.LastJumpTime
+end
+function SWEP:SetLastJumpTime(val)
+	self.LastJumpTime = val
+end
+function SWEP:GetLastParryTime()
+	return self.LastParryTime
+end
+function SWEP:SetLastParryTime(val)
+	self.LastParryTime = val
+end
+function SWEP:SetNextReload(val)
+	self.NextReloadTime = val
+end
+-- function SWEP:PreDrop()
+-- 	return self.BaseClass.PreDrop(self)
+-- end
