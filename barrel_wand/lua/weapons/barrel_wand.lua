@@ -12,11 +12,14 @@ throwprop speed
 		each throwprop 
 			increments position in table of barrel entity ids
 			spawns/updates barrel pos
+			propels as usual
 	make a separate function to test this out and compare throwprop and throwprop2 side by side
 	
-
 hitmarker sound
 	fix me. also make me a universal thing for guns etc.
+
+health regen
+	can it be triggered from the client?
 */
 
 print("Executed lua: " .. debug.getinfo(1,'S').source)
