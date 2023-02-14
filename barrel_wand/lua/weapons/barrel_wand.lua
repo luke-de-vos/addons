@@ -453,3 +453,39 @@ if CLIENT then
 		end
 	end)
 end
+
+SWEP.Props = {}
+function SWEP:CacheProp(n)
+	local owner = self:GetOwner()
+	if not owner:IsValid() then return end
+	if CLIENT then return end
+	MY_BARREL_NAME = WAND_PROP_PREFIX..self:GetOwner():SteamID()
+
+	local i=0
+	while i < n do
+		local magic_prop = ents.Create("prop_physics")
+		if not IsValid(magic_prop) then 
+			print("barrel_wand.cache_props: failed to create prop")
+			return 
+		end
+		magic_prop:SetName(MY_BARREL_NAME)
+		magic_prop:SetColor(Color(255,0,0))
+		magic_prop:SetPhysicsAttacker(owner, prop_duration)
+		self:AddPhysicsCallback(magic_prop, owner, MY_BARREL_NAME)
+		table.insert(self.Props, magic_prop)
+		i = i+1
+	end
+end
+
+function SWEP:SetPropPosAndAngles(prop, owner)
+	local aimvec = owner:GetAimVector()
+	local spawn_pos = owner:EyePos()
+	spawn_pos.z = spawn_pos.z - 10 -- lower below eye level
+	spawn_pos:Add((aimvec * 32))
+	prop:SetPos(spawn_pos)
+	prop:SetAngles(owner:EyeAngles())
+end
+
+function SWEP:ThrowCachedProp()
+
+end
