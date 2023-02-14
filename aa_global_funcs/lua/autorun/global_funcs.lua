@@ -237,3 +237,8 @@ if SERVER then
         end
     end)
 end
+
+-- hup!
+hook.Add("OnKeyPressed???", "hup_hook", function(ply)
+    sound.Play("hup", ply:GetPos()+Vector(0,0,70), 100, 100, 100)
+end)
