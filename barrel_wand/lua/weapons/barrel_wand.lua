@@ -250,7 +250,7 @@ function SWEP:ThrowProp(model_file, force_mult, prop_duration, weight_mult)
  
 	-- propulsion
 	phys:SetMass(60*weight_mult)
-	local impulse = aimvec * phys:GetMass() * force_mult
+	local impulse = self:GetOwner():GetAimVector() * phys:GetMass() * force_mult
 	--aimvec:Add( VectorRand( -10, 10 ) ) -- Add a random vector with elements [-10, 10)
 	phys:ApplyForceCenter(impulse * engine.TickInterval()) 
 
