@@ -31,7 +31,7 @@ if SERVER then
 	resource.AddFile("sound/parry_44.wav")
 	resource.AddFile("sound/hit.wav")
 	resource.AddFile("materials/VGUI/ttt/icon_barrel_wand.jpg")
-	util.AddNetworkString("hitmarker_msg")
+	util.AddNetworkString("bw_hitmarker_msg")
 end
 
 SWEP.Base = "weapon_tttbase"
@@ -320,6 +320,15 @@ if SERVER then
 		end
 	end)
 
+	hook.Add("EntityTakeDamage", "bw_takedamage2", function(vic, dmg)
+		if vic:IsPlayer() then
+			if dmg:GetDamage() >= 1 then
+				net.Start("bw_hitmarker_msg")
+				net.Send(dmg:GetAttacker())
+			end
+		end
+	end)
+
 	function parry_updates(wep, att, vic, dmg)
 		wep:SetLastParryTime(CurTime())
 		wep:SendWeaponAnim( ACT_VM_HITCENTER )
@@ -401,7 +410,7 @@ function SWEP:Holster()
 end
 
 if CLIENT then
-	net.Receive("hitmarker_msg", function()
+	net.Receive("bw_hitmarker_msg", function()
 		surface.PlaySound("hit.wav")
 	end)
 
