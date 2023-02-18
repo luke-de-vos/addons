@@ -29,9 +29,7 @@ if SERVER then
 	resource.AddFile("sound/body_medium_impact_hard4.wav")
 	resource.AddFile("sound/body_medium_impact_hard5.wav")
 	resource.AddFile("sound/parry_44.wav")
-	resource.AddFile("sound/hit.wav")
 	resource.AddFile("materials/VGUI/ttt/icon_barrel_wand.jpg")
-	util.AddNetworkString("bw_hitmarker_msg")
 end
 
 SWEP.Base = "weapon_tttbase"
@@ -42,7 +40,6 @@ SWEP.ReloadSound = Sound("Weapon_StunStick.Melee_Hit") -- Weapon_Crowbar.Single
 SWEP.HotSound = "Weapon_PhysCannon.Launch"
 SWEP.ParrySound = "parry_44.wav"
 SWEP.GotParriedSound = Sound("Weapon_StunStick.Activate")
-SWEP.HitSound = Sound("Hit")
 
 SWEP.ViewModel = "models/weapons/c_stunstick.mdl"
 SWEP.WorldModel = "models/weapons/c_stunstick.mdl"
@@ -320,15 +317,6 @@ if SERVER then
 		end
 	end)
 
-	hook.Add("EntityTakeDamage", "bw_takedamage2", function(vic, dmg)
-		if vic:IsPlayer() then
-			if dmg:GetDamage() >= 1 then
-				net.Start("bw_hitmarker_msg")
-				net.Send(dmg:GetAttacker())
-			end
-		end
-	end)
-
 	function parry_updates(wep, att, vic, dmg)
 		wep:SetLastParryTime(CurTime())
 		wep:SendWeaponAnim( ACT_VM_HITCENTER )
@@ -410,9 +398,6 @@ function SWEP:Holster()
 end
 
 if CLIENT then
-	net.Receive("bw_hitmarker_msg", function()
-		surface.PlaySound("hit.wav")
-	end)
 
 	local recent_max = 0
 	local recent_max_set_at = 0
