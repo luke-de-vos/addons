@@ -74,13 +74,13 @@ if SERVER then
 	function send_cuff_message(ply, message, notify_type)
 		net.Start("cuffs_popup")
 		net.WriteString(message)
-		net.WriteUInt(notify_type, 32)
+		net.WriteUInt(notify_type, 8)
 		net.Send(ply)
 	end
 end
 if CLIENT then
 	net.Receive("cuffs_popup", function()
-		notification.AddLegacy(net.ReadString(), net.ReadUInt(32), 4)
+		notification.AddLegacy(net.ReadString(), net.ReadUInt(8), 4)
 	end)
 end
 
@@ -128,28 +128,30 @@ function SWEP:PrimaryAttack(ply)
 		return
 	end
 
-	if SERVER then
-		for k, ply in pairs( player.GetAll() ) do
-			if ply:IsValid() and (ply:IsPlayer() or ply:IsNPC()) then
-				if ply:GetNWBool( "FrozenYay" ) == true then
-					ply:SetNWBool( "FrozenYay", false )
-					ply:SetNWBool( "GotCuffed", true )
-					ply:Give("weapon_zm_improvised")
-					ply:Give("weapon_zm_carry")
-					ply:Give("weapon_ttt_unarmed")
-				end
-			end
-		end
-	end
+	-- if SERVER then
+	-- 	for k, ply in pairs( player.GetAll() ) do
+	-- 		if ply:IsValid() and (ply:IsPlayer() or ply:IsNPC()) then
+	-- 			if ply:GetNWBool( "FrozenYay" ) == true then
+	-- 				ply:SetNWBool( "FrozenYay", false )
+	-- 				ply:SetNWBool( "GotCuffed", true )
+	-- 				ply:Give("weapon_zm_improvised")
+	-- 				ply:Give("weapon_zm_carry")
+	-- 				ply:Give("weapon_ttt_unarmed")
+	-- 			end
+	-- 		end
+	-- 	end
+	-- end
 
-	
 	if ( ply:IsValid() and (ply:IsPlayer() or ply:IsNPC()) ) then
 		if CLIENT then return end
 		if ply:GetNWBool( "GotCuffed" ) == true or ply:GetNWBool( "FrozenYay" ) == true then
-			send_cuff_message(self:GetOwner(), "A player can only be cuffed once.", 1)
+			send_cuff_message(self:GetOwner(), ply:Nick().." was already cuffed this round.", 1)
 			return
 		end
 		self:GetOwner():EmitSound("npc/metropolice/vo/holdit.wav", 50, 100)
+		timer.Create("cuff_sounds_timer", 0.05, 3, function()
+			ply:EmitSound("Weapon_Shotgun.Empty", 100, 100)
+		end)
 		send_cuff_message(self:GetOwner(), "You cuffed "..ply:Nick()..".", 0)
 		send_cuff_message(ply, "You was cuffed.", 0) 
 
@@ -167,6 +169,7 @@ function SWEP:PrimaryAttack(ply)
 						ply:Give("weapon_zm_carry")
 						ply:Give("weapon_ttt_unarmed")
 						send_cuff_message(ply, "You are released.", 2)
+						send_cuff_message(self:GetOwner(), ply:Nick().." served their time.", 2)
 					end
 				end
 			end
