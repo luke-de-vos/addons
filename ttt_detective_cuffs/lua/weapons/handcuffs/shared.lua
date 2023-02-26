@@ -69,6 +69,21 @@ SWEP.Secondary.DefaultClip = -1
 SWEP.Secondary.Automatic = false
 SWEP.Secondary.Ammo = "none"
 
+if SERVER then
+	util.AddNetworkString("cuffs_popup")
+end
+if CLIENT then
+	local MESSAGES = {"You was cuffed.", 
+	"You are released.",
+	"A player can only be cuffed once.",
+	"Player has been cuffed.",
+	"Player isn't cuffed."}
+	net.Receive("cuffs_popup", function()
+		local message_no = net.ReadInt(32)
+		notification.AddLegacy(MESSAGES[message_no], NOTIFY_UNDO, 4)
+	end)
+end
+
 
 function SWEP:Reload()
 end
@@ -81,7 +96,8 @@ end
 if CLIENT then
 	function SWEP:GetViewModelPosition( pos, ang )
 		ang:RotateAroundAxis( ang:Forward(), 90 ) 
-		pos = pos + ang:Forward()*6
+		pos = pos + ang:Forward()*7
+		pos:Add(Vector(0,0,-3))
 		return pos, ang
 	end 
 end
@@ -94,8 +110,16 @@ function SWEP:Initialize()
 	end
 end
 
+if SERVER then
+	function send_cuff_message(ply, message_no)
+		net.Start("cuffs_popup")
+		net.WriteInt(message_no, 32) -- second arg is number of bits to repesent int with
+		net.Send(ply)
+	end
+end
 
 function SWEP:PrimaryAttack(ply)
+	self:SetNextPrimaryFire(CurTime()+0.1)
 	local owner = self.Owner
 	local trace = { }
 	trace.start = self.Owner:EyePos();
@@ -126,60 +150,56 @@ function SWEP:PrimaryAttack(ply)
 		end
 	end
 
+	
 	if ( ply:IsValid() and (ply:IsPlayer() or ply:IsNPC()) ) then
+		if CLIENT then return end
 		if ply:GetNWBool( "GotCuffed" ) == true or ply:GetNWBool( "FrozenYay" ) == true then
-			self.Owner:PrintMessage( HUD_PRINTCENTER, "You can't cuff the same Person 2 times." );
+			send_cuff_message(self:GetOwner(), 3) --self.Owner:PrintMessage( HUD_PRINTCENTER, "You can't cuff the same Person 2 times." );
 			return
 		end
-		self.Owner:PrintMessage	(HUD_PRINTCENTER,"Player was cuffed.")
-		ply:PrintMessage (HUD_PRINTCENTER,"You was cuffed.")
-		self.Owner:EmitSound("npc/metropolice/vo/holdit.wav", 50, 100)
-		ply:EmitSound("npc/metropolice/vo/holdit.wav", 50, 100)
+		self:GetOwner():EmitSound("npc/metropolice/vo/holdit.wav", 50, 100)
+		send_cuff_message(self:GetOwner(), 4) --self.Owner:PrintMessage	(HUD_PRINTCENTER,"Player was cuffed.")
+		send_cuff_message(ply, 1) --ply:PrintMessage (HUD_PRINTCENTER,"You was cuffed.")
 
 		if not IsValid(self.Owner) then return end
         self.IsWeaponChecking = false
 
-	timer.Create("EndCuffed", 30, 1, function()
-		if SERVER then
-			if ply:IsValid() and (ply:IsPlayer() or ply:IsNPC()) then
-				if ply:GetNWBool( "FrozenYay" ) == true then
-					timer.Stop("CantPickUp")
-					ply:SetNWBool( "FrozenYay", false )
-					ply:SetNWBool( "GotCuffed", true )
-					ply:Give("weapon_zm_improvised")
-					ply:Give("weapon_zm_carry")
-					ply:Give("weapon_ttt_unarmed")
-					ply:PrintMessage(HUD_PRINTCENTER,"You are released.");
-					if IsValid(self.Owner) then
-						self.Owner:PrintMessage( HUD_PRINTCENTER, "30 seconds are up." );
+		timer.Create("EndCuffed", 30, 1, function()
+			if SERVER then
+				if ply:IsValid() and (ply:IsPlayer() or ply:IsNPC()) then
+					if ply:GetNWBool( "FrozenYay" ) == true then
+						timer.Stop("CantPickUp")
+						ply:SetNWBool( "FrozenYay", false )
+						ply:SetNWBool( "GotCuffed", true )
+						ply:Give("weapon_zm_improvised")
+						ply:Give("weapon_zm_carry")
+						ply:Give("weapon_ttt_unarmed")
+						send_cuff_message(ply, 1) --ply:PrintMessage(HUD_PRINTCENTER,"You are released.");
 					end
 				end
 			end
-		end
-	end)
+		end)
 
-    if CLIENT then return end
-
-	timer.Create("CantPickUp", 0.01, 0, function()
-		ply:SetNWBool( "FrozenYay", true )
-		if not IsValid(ply) or not ply:IsPlayer() then return end
-		for k, v in pairs( ply:GetWeapons() ) do
-			ply:DropWeapon( v )
-			local class = v:GetClass()
-			if SERVER then
-				ply:StripWeapon(class)
-				result = result..", "..class
-				table.insert(stripped, {class, ply:GetAmmoCount(v:GetPrimaryAmmoType()),
-				v:GetPrimaryAmmoType(), ply:GetAmmoCount(v:GetSecondaryAmmoType()), v:GetSecondaryAmmoType(),
-				v:Clip1(), v:Clip2()})
+		timer.Create("CantPickUp", 0.01, 0, function()
+			ply:SetNWBool( "FrozenYay", true )
+			if not IsValid(ply) or not ply:IsPlayer() then return end
+			for k, v in pairs( ply:GetWeapons() ) do
+				ply:DropWeapon( v )
+				local class = v:GetClass()
+				if SERVER then
+					ply:StripWeapon(class)
+					result = result..", "..class
+					table.insert(stripped, {class, ply:GetAmmoCount(v:GetPrimaryAmmoType()),
+					v:GetPrimaryAmmoType(), ply:GetAmmoCount(v:GetSecondaryAmmoType()), v:GetSecondaryAmmoType(),
+					v:Clip1(), v:Clip2()})
+				end
 			end
-		end
-	end)
-	hook.Add( "PlayerCanPickupWeapon", "noDoublePickup", function( ply, wep )
-		if ply:IsValid() and ply:GetNWBool( "FrozenYay" ) == true and ply:GetNWBool( "GotCuffed" ) == false then
-			return false
-		end
-	end )
+		end)
+		hook.Add( "PlayerCanPickupWeapon", "noDoublePickup", function( ply, wep )
+			if ply:IsValid() and ply:GetNWBool( "FrozenYay" ) == true and ply:GetNWBool( "GotCuffed" ) == false then
+				return false
+			end
+		end )
 	end
 end
 	   
@@ -205,14 +225,13 @@ function SWEP:SecondaryAttack(ply)
 				ply:Give("weapon_zm_improvised")
 				ply:Give("weapon_zm_carry")
 				ply:Give("weapon_ttt_unarmed")
-				ply:PrintMessage(HUD_PRINTCENTER,"You are released.");
-				ply:EmitSound("npc/metropolice/vo/getoutofhere.wav", 50, 100)
-				self.Owner:EmitSound("npc/metropolice/vo/getoutofhere.wav", 50, 100)
+				self:GetOwner():EmitSound("npc/metropolice/vo/getoutofhere.wav", 50, 100)
+				send_cuff_message(ply, 2) --ply:PrintMessage(HUD_PRINTCENTER,"You are released.");
 			elseif ply:GetNWBool( "GotCuffed" ) == false then
-				self.Owner:PrintMessage( HUD_PRINTCENTER, "Player wasn't cuffed." );
+				send_cuff_message(ply, 5) --self.Owner:PrintMessage( HUD_PRINTCENTER, "Player wasn't cuffed." );
 				return;
 			elseif ply:GetNWBool( "GotCuffed" ) == true or ply:GetNWBool( "FrozenYay" ) == false then
-				self.Owner:PrintMessage( HUD_PRINTCENTER, "Player isn't cuffed" );
+				send_cuff_message(ply, 5) -- self.Owner:PrintMessage( HUD_PRINTCENTER, "Player isn't cuffed" );
 				return;
 			end
 		end
