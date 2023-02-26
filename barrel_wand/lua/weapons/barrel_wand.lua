@@ -42,7 +42,7 @@ SWEP.ParrySound = "parry_44.wav"
 SWEP.GotParriedSound = Sound("Weapon_StunStick.Activate")
 
 SWEP.ViewModel = "models/weapons/c_stunstick.mdl"
-SWEP.WorldModel = "models/weapons/c_stunstick.mdl"
+SWEP.WorldModel = "models/weapons/w_stunbaton.mdl"
 SWEP.UseHands = true
 
 if CLIENT then
