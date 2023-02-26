@@ -80,10 +80,7 @@ if SERVER then
 end
 if CLIENT then
 	net.Receive("cuffs_popup", function()
-		local x = net.ReadString()
-		local y = net.ReadUInt(32)
-		print(x, y)
-		notification.AddLegacy(x, y, 4)
+		notification.AddLegacy(net.ReadString(), net.ReadUInt(32), 4)
 	end)
 end
 
