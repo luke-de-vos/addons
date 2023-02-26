@@ -39,7 +39,6 @@ if SERVER then
     hook.Add("EntityTakeDamage", "zz_hitmarker_sound", function(vic, dmg)
         if vic:IsPlayer() and dmg:GetAttacker():IsPlayer() then
             if dmg:GetDamage() >= 1 then
-                print(dmg:GetDamage())
                 net.Start("zz_hitmarker_sound_msg")
                 net.Send(dmg:GetAttacker())
             end
