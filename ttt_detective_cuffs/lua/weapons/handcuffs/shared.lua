@@ -158,24 +158,24 @@ function SWEP:PrimaryAttack(ply)
 		if not IsValid(self.Owner) then return end
         self.IsWeaponChecking = false
 
-		timer.Create("EndCuffed"..ply:EntIndex(), 30, 1, function()
+		timer.Create("EndCuffed"..ply:EntIndex(), 5, 1, function()
 			if SERVER then
 				if ply:IsValid() and (ply:IsPlayer() or ply:IsNPC()) then
 					if ply:GetNWBool( "FrozenYay" ) == true then
-						timer.Stop("CantPickUp")
+						timer.Stop("CantPickUp"..ply:EntIndex())
 						ply:SetNWBool( "FrozenYay", false )
 						ply:SetNWBool( "GotCuffed", true )
 						ply:Give("weapon_zm_improvised")
 						ply:Give("weapon_zm_carry")
 						ply:Give("weapon_ttt_unarmed")
-						send_cuff_message(ply, "You are released.", 2)
+						send_cuff_message(ply, "You are free.", 2)
 						send_cuff_message(self:GetOwner(), ply:Nick().." served their time.", 2)
 					end
 				end
 			end
 		end)
 
-		timer.Create("CantPickUp", 0.01, 0, function()
+		timer.Create("CantPickUp"..ply:EntIndex(), 0.01, 0, function()
 			ply:SetNWBool( "FrozenYay", true )
 			if not IsValid(ply) or not ply:IsPlayer() then return end
 			for k, v in pairs( ply:GetWeapons() ) do
@@ -214,7 +214,7 @@ function SWEP:SecondaryAttack(ply)
 
 		if ply:IsValid() and ply:IsPlayer() and ply:Alive() then
 			if ply:GetNWBool( "FrozenYay" ) == true then
-				timer.Stop("CantPickUp")
+				timer.Stop("CantPickUp"..ply:EntIndex())
 				ply:SetNWBool( "FrozenYay", false )
 				ply:SetNWBool( "GotCuffed", true )
 				ply:Give("weapon_zm_improvised")
@@ -235,40 +235,16 @@ function SWEP:SecondaryAttack(ply)
 end
 
 
-local function StopCantPickUp1()
+local function StopCantPickUp()
 	local Players = player.GetAll()
 	for i = 1, table.Count(Players) do
-    		local ply = Players[i]
-    		timer.Stop("EndCuffed")
-		timer.Stop("CantPickUp")
+		local ply = Players[i]
+		timer.Stop("EndCuffed"..ply:EntIndex())
+		timer.Stop("CantPickUp"..ply:EntIndex())
 		ply:SetNWBool( "GotCuffed", false )
 		ply:SetNWBool( "FrozenYay", false )
 	end
 end
-hook.Add("TTTEndRound", "CantPickUpEnd", StopCantPickUp1)
-
-
-local function StopCantPickUp2()
-	local Players = player.GetAll()
-	for i = 1, table.Count(Players) do
-    		local ply = Players[i]
-    		timer.Stop("EndCuffed")
-		timer.Stop("CantPickUp")
-		ply:SetNWBool( "GotCuffed", false )
-		ply:SetNWBool( "FrozenYay", false )
-	end
-end
-hook.Add( "PlayerDisconnected", "playerDisconnected", StopCantPickUp2 )
-
-
-local function StopCantPickUp3()
-	local Players = player.GetAll()
-	for i = 1, table.Count(Players) do
-    		local ply = Players[i]
-    		timer.Stop("EndCuffed")
-		timer.Stop("CantPickUp")
-		ply:SetNWBool( "GotCuffed", false )
-		ply:SetNWBool( "FrozenYay", false )
-	end
-end
-hook.Add( "TTTBeginRound", "CantPickUpEnd2", StopCantPickUp3 )
+hook.Add("TTTEndRound", "CantPickUpEnd", StopCantPickUp)
+hook.Add( "PlayerDisconnected", "playerDisconnected", StopCantPickUp )
+hook.Add( "TTTBeginRound", "CantPickUpEnd2", StopCantPickUp )
