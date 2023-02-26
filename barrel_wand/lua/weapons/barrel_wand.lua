@@ -62,13 +62,13 @@ end
 
 SWEP.Spawnable = true
 
-SWEP.Primary.ClipSize = 1
+SWEP.Primary.ClipSize = 0
 SWEP.Primary.DefaultClip = 0
 SWEP.Primary.Automatic = true
 SWEP.Primary.Ammo = "RPG_Round"
 
-SWEP.Secondary.ClipSize	= 2
-SWEP.Secondary.DefaultClip = 2
+SWEP.Secondary.ClipSize	= 0
+SWEP.Secondary.DefaultClip = 0
 SWEP.Secondary.Automatic = true
 SWEP.Secondary.Ammo	= "RPG_Round"
 
@@ -129,13 +129,8 @@ function SWEP:PrimaryAttack()
 		self:GetOwner():DoAttackEvent()
 
 		-- sounds, barrel type
-		if self:GetOwner():GetAmmoCount(self.Primary.Ammo) >= HOT_BARREL_COST then
+		if (CurTime() - self:GetLastParryTime()) <= PARRY_THROW_WINDOW then
 			self.IsHot = true
-			self:EmitSound(self.HotSound, 100, 100, 1, CHAN_WEAPON)
-			self:TakePrimaryAmmo(HOT_BARREL_COST)
-		elseif (CurTime() - self:GetLastParryTime()) <= PARRY_THROW_WINDOW then
-			self.IsHot = true
-			--self:GetOwner():EmitSound(self.HotSound, 100, 100, 1, CHAN_WEAPON)
 		else 
 			self:EmitSound(self.ShootSound, 100, 100, 1, CHAN_WEAPON)
 		end
@@ -162,6 +157,7 @@ end
 
 function SWEP:SecondaryAttack()
 	if self:GetNextSecondaryFire() <= CurTime() then
+
 		self:SetNextPrimaryFire(math.max((CurTime() + self.InterRof), self:GetNextPrimaryFire()))
 		self:SetNextSecondaryFire(math.max((CurTime() + self.SecondaryRof), self:GetNextSecondaryFire()))
 		self:SetNextReload(math.max((CurTime() + self.InterRof), self.NextReloadTime))
@@ -172,6 +168,7 @@ function SWEP:SecondaryAttack()
 		else
 			self:GetOwner():SetVelocity((self:GetOwner():GetAimVector() + Vector(0,0,0.4)) * 500)
 		end
+
 		-- sound and visual
 		if SERVER then 
 			local effect = EffectData()
