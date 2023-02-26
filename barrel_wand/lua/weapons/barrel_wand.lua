@@ -306,7 +306,7 @@ if SERVER then
 						elseif cl == "prop_physics" then
 							wep.dtrack[id] = true
 							dmg:SetDamage(400) -- divided by 4 for some reason? does 100 damage
-							sound.Play(SMACK_SOUNDS[math.random(#SMACK_SOUNDS)], dmg:GetInflictor():GetPos())
+							sound.Play(SMACK_SOUNDS[math.random(#SMACK_SOUNDS)], vic:GetPos()+Vector(0,0,40), 100, 100, 1)
 						end
 					end
 				end
@@ -351,7 +351,7 @@ function SWEP:AddPhysicsCallback(magic_prop, owner, MY_BARREL_NAME)
 				if string.sub(hit_ent:GetName(), 0, PREFIX_LEN) == WAND_PROP_PREFIX then
 					if IsFirstTimePredicted() then
 						sound.Play(CLANK_SOUNDS[math.random(#CLANK_SOUNDS)], data.HitPos, 75, 100, 1)
-						--_spark(data.HitPos)
+						_spark(data.HitPos)
 						_effect("MetalSpark", data.HitPos, 1, 1, 1)
 					end
 				end
