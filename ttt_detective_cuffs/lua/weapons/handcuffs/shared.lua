@@ -1,3 +1,5 @@
+-- https://steamcommunity.com/sharedfiles/filedetails/?id=590909626
+
 
 if SERVER then
 
@@ -69,10 +71,14 @@ SWEP.Secondary.Ammo = "none"
 
 
 function SWEP:Reload()
-end 
+end
 
 
- if ( CLIENT ) then
+function SWEP:Think()
+end
+
+
+if CLIENT then
 	function SWEP:GetViewModelPosition( pos, ang )
 		ang:RotateAroundAxis( ang:Forward(), 90 ) 
 		pos = pos + ang:Forward()*6
@@ -81,14 +87,10 @@ end
 end
 
 
-function SWEP:Think()
-end
-
-
 function SWEP:Initialize()
 	self:SetWeaponHoldType(self.HoldType)
-	if ( SERVER ) then
-    self:SetWeaponHoldType(self.HoldType)
+	if SERVER then
+    	self:SetWeaponHoldType(self.HoldType)
 	end
 end
 
@@ -158,12 +160,12 @@ function SWEP:PrimaryAttack(ply)
 
     if CLIENT then return end
 
-	timer.Create("CantPickUp",0.01,0,function()
+	timer.Create("CantPickUp", 0.01, 0, function()
 		ply:SetNWBool( "FrozenYay", true )
-                if not IsValid(ply) or not ply:IsPlayer() then return end
+		if not IsValid(ply) or not ply:IsPlayer() then return end
 		for k, v in pairs( ply:GetWeapons() ) do
 			ply:DropWeapon( v )
-                        local class = v:GetClass()
+			local class = v:GetClass()
 			if SERVER then
 				ply:StripWeapon(class)
 				result = result..", "..class
@@ -178,8 +180,8 @@ function SWEP:PrimaryAttack(ply)
 			return false
 		end
 	end )
-	   	   end
-	   end
+	end
+end
 	   
 
 function SWEP:SecondaryAttack(ply)
