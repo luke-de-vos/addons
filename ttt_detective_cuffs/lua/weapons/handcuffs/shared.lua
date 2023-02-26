@@ -158,7 +158,7 @@ function SWEP:PrimaryAttack(ply)
 		if not IsValid(self.Owner) then return end
         self.IsWeaponChecking = false
 
-		timer.Create("EndCuffed", 30, 1, function()
+		timer.Create("EndCuffed"..ply:EntIndex(), 30, 1, function()
 			if SERVER then
 				if ply:IsValid() and (ply:IsPlayer() or ply:IsNPC()) then
 					if ply:GetNWBool( "FrozenYay" ) == true then
