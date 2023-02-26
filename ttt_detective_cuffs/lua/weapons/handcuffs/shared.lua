@@ -71,16 +71,19 @@ SWEP.Secondary.Ammo = "none"
 
 if SERVER then
 	util.AddNetworkString("cuffs_popup")
+	function send_cuff_message(ply, message, notify_type)
+		net.Start("cuffs_popup")
+		net.WriteString(message)
+		net.WriteUInt(notify_type, 32)
+		net.Send(ply)
+	end
 end
 if CLIENT then
-	local MESSAGES = {"You was cuffed.", 
-	"You are released.",
-	"A player can only be cuffed once.",
-	"Player has been cuffed.",
-	"Player isn't cuffed."}
 	net.Receive("cuffs_popup", function()
-		local message_no = net.ReadInt(32)
-		notification.AddLegacy(MESSAGES[message_no], NOTIFY_UNDO, 4)
+		local x = net.ReadString()
+		local y = net.ReadUInt(32)
+		print(x, y)
+		notification.AddLegacy(x, y, 4)
 	end)
 end
 
@@ -107,14 +110,6 @@ function SWEP:Initialize()
 	self:SetWeaponHoldType(self.HoldType)
 	if SERVER then
     	self:SetWeaponHoldType(self.HoldType)
-	end
-end
-
-if SERVER then
-	function send_cuff_message(ply, message_no)
-		net.Start("cuffs_popup")
-		net.WriteInt(message_no, 32) -- second arg is number of bits to repesent int with
-		net.Send(ply)
 	end
 end
 
@@ -154,12 +149,12 @@ function SWEP:PrimaryAttack(ply)
 	if ( ply:IsValid() and (ply:IsPlayer() or ply:IsNPC()) ) then
 		if CLIENT then return end
 		if ply:GetNWBool( "GotCuffed" ) == true or ply:GetNWBool( "FrozenYay" ) == true then
-			send_cuff_message(self:GetOwner(), 3) --self.Owner:PrintMessage( HUD_PRINTCENTER, "You can't cuff the same Person 2 times." );
+			send_cuff_message(self:GetOwner(), "A player can only be cuffed once.", 1)
 			return
 		end
 		self:GetOwner():EmitSound("npc/metropolice/vo/holdit.wav", 50, 100)
-		send_cuff_message(self:GetOwner(), 4) --self.Owner:PrintMessage	(HUD_PRINTCENTER,"Player was cuffed.")
-		send_cuff_message(ply, 1) --ply:PrintMessage (HUD_PRINTCENTER,"You was cuffed.")
+		send_cuff_message(self:GetOwner(), "You cuffed "..ply:Nick()..".", 0)
+		send_cuff_message(ply, "You was cuffed.", 0) 
 
 		if not IsValid(self.Owner) then return end
         self.IsWeaponChecking = false
@@ -174,7 +169,7 @@ function SWEP:PrimaryAttack(ply)
 						ply:Give("weapon_zm_improvised")
 						ply:Give("weapon_zm_carry")
 						ply:Give("weapon_ttt_unarmed")
-						send_cuff_message(ply, 1) --ply:PrintMessage(HUD_PRINTCENTER,"You are released.");
+						send_cuff_message(ply, "You are released.", 2)
 					end
 				end
 			end
@@ -226,12 +221,13 @@ function SWEP:SecondaryAttack(ply)
 				ply:Give("weapon_zm_carry")
 				ply:Give("weapon_ttt_unarmed")
 				self:GetOwner():EmitSound("npc/metropolice/vo/getoutofhere.wav", 50, 100)
-				send_cuff_message(ply, 2) --ply:PrintMessage(HUD_PRINTCENTER,"You are released.");
+				send_cuff_message(ply, "You are released.", 2)
+				send_cuff_message(self:GetOwner(), "You released "..ply:Nick()..".", 2)
 			elseif ply:GetNWBool( "GotCuffed" ) == false then
-				send_cuff_message(ply, 5) --self.Owner:PrintMessage( HUD_PRINTCENTER, "Player wasn't cuffed." );
+				send_cuff_message(self:GetOwner(), ply:Nick().." is not cuffed.", 1)
 				return;
 			elseif ply:GetNWBool( "GotCuffed" ) == true or ply:GetNWBool( "FrozenYay" ) == false then
-				send_cuff_message(ply, 5) -- self.Owner:PrintMessage( HUD_PRINTCENTER, "Player isn't cuffed" );
+				send_cuff_message(self:GetOwner(), ply:Nick().." is not cuffed.", 1)
 				return;
 			end
 		end
