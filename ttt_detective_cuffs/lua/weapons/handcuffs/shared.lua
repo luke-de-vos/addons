@@ -38,7 +38,7 @@ SWEP.Purpose = "Bake him away, toys!"
 SWEP.Instructions = "Left click target to put cuffs on. Right click target to take cuffs off."
 SWEP.Spawnable = false
 SWEP.AdminSpawnable = true
-SWEP.HoldType = "normal"   
+SWEP.HoldType = "pistol"   
 SWEP.UseHands = true
 SWEP.ViewModelFlip = false
 SWEP.ViewModelFOV = 90
@@ -158,7 +158,7 @@ function SWEP:PrimaryAttack(ply)
 		if not IsValid(self.Owner) then return end
         self.IsWeaponChecking = false
 
-		timer.Create("EndCuffed"..ply:EntIndex(), 5, 1, function()
+		timer.Create("EndCuffed"..ply:EntIndex(), 15, 1, function()
 			if SERVER then
 				if ply:IsValid() and (ply:IsPlayer() or ply:IsNPC()) then
 					if ply:GetNWBool( "FrozenYay" ) == true then
