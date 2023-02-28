@@ -9,7 +9,7 @@ if SERVER then
 	end)
 end
 
--- spawn geagle(s)
+-- spawn geagle(s). alert player when picked up
 if SERVER then
     hook.Add("TTTBeginRound", "spawn_1_geagle", function()
         local options = {}
@@ -24,6 +24,9 @@ if SERVER then
             geagle:Spawn()
         end
     end)
+	hook.Add("WeaponEquip","geag_alert", function(wep, owner)
+		owner:PrintMessage(HUD_PRINTCENTER, "YOU GOT THA GEAG")
+	end)
 end
 
 -- hup!
@@ -38,7 +41,7 @@ if SERVER then
     util.AddNetworkString("zz_hitmarker_sound_msg")
     hook.Add("EntityTakeDamage", "zz_hitmarker_sound", function(vic, dmg)
         if vic:IsPlayer() and dmg:GetAttacker():IsPlayer() then
-            if dmg:GetDamage() >= 1 then
+            if dmg:GetDamage() >= 1 then -- this doesn't work
                 net.Start("zz_hitmarker_sound_msg")
                 net.Send(dmg:GetAttacker())
             end
@@ -79,4 +82,33 @@ if CLIENT then
 			end
 		end
 	end)
+end
+
+
+
+
+if SERVER then
+	hook.Add("Tick", "dash_key", function()
+		if (Entity(1):KeyDown(2)) then
+			Entity(1):SetVelocity(Entity(1):GetAimVector()*100+Vector(0,0,20))
+			-- if Entity(1):KeyDown(IN_MOVELEFT) then
+			-- 	Entity(1):SetVelocity(Entity(1):GetAimVector()*100)
+			-- end
+			-- if Entity(1):KeyDown(IN_MOVERIGHT) then
+			-- 	Entity(1):SetVelocity(Entity(1):GetAimVector()*100)
+			-- end
+			-- if Entity(1):KeyDown(IN_FORWARD) then
+			-- 	Entity(1):SetVelocity(Entity(1):GetAimVector()*100)
+			-- end	
+			-- if Entity(1):KeyDown(IN_BACK) then
+			-- 	Entity(1):SetVelocity(Entity(1):GetAimVector()*100)
+			-- end
+		end
+	end)
+	--hook.Remove("Tick","dash_key")
+end
+
+
+if SERVER then
+	for ent in ipairs(entity.Lis)
 end
