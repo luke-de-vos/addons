@@ -7,7 +7,7 @@ if SERVER then
 	-- config
 	local FFA_ROUND_LEN = 60 -- minutes
 	local RESPAWN_DELAY = 2 -- seconds
-	local TTT_ROUND_LEN = 5
+	local TTT_ROUND_LEN = 8
 
 	AddCSLuaFile()
 	
@@ -98,7 +98,7 @@ if SERVER then
 	function reg_ttt()
 		_drop_hooks()
 		RunConsoleCommand("ttt_debug_preventwin", "0")
-		RunConsoleCommand("ttt_preptime_seconds", "15")
+		RunConsoleCommand("ttt_preptime_seconds", "25")
 		RunConsoleCommand("ttt_roundtime_minutes", TTT_ROUND_LEN)
 		RunConsoleCommand("ulx", "roundrestart")
 	end
