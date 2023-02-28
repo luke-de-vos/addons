@@ -376,8 +376,8 @@ function SWEP:Deploy()
 	if SERVER then
 		if IsValid(self:GetOwner()) then
 			if self:GetOwner():GetRole() != 2 then -- in oddblock, the block holder is assigned Detective (2) role
-				self:GetOwner():SetMaxHealth(200)
-				self:GetOwner():SetHealth(200)
+				self:GetOwner():SetMaxHealth(100)
+				self:GetOwner():SetHealth(100)
 				self.LastDamageTime = CurTime()
 			end
 		end
