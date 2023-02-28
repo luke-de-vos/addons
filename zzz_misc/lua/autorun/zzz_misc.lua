@@ -11,22 +11,30 @@ end
 
 -- spawn geagle(s). alert player when picked up
 if SERVER then
-    hook.Add("TTTBeginRound", "spawn_1_geagle", function()
-        local options = {}
-        for i, ent in ipairs(ents.GetAll()) do
-            if ent:IsWeapon() then
-                table.insert(options, ent:GetPos())
-            end
-        end
-        if #options >= 1 then
-            local geagle = ents.Create("weapon_ttt_powerdeagle")
-            geagle:SetPos(options[math.random(#options)] + Vector(0,0,30))
-            geagle:Spawn()
-        end
-    end)
-	hook.Add("WeaponEquip","geag_alert", function(wep, owner)
-		owner:PrintMessage(HUD_PRINTCENTER, "YOU GOT THA GEAG")
-	end)
+	function spawn_geag() 
+		local options = {}
+		for i, ent in ipairs(ents.GetAll()) do
+			if ent:IsWeapon() then
+				table.insert(options, ent:GetPos())
+			end
+		end
+		if #options >= 1 then
+			local geagle = ents.Create("weapon_ttt_powerdeagle")
+			geagle:SetPos(options[math.random(#options)] + Vector(0,0,30))
+			geagle:Spawn()
+		end
+	end
+	function geag_alert(wep, owner)
+		if wep:GetClass() == "weapon_ttt_powerdeagle" then
+			owner:PrintMessage(HUD_PRINTCENTER, "GOLDEN DEAG EQUIPPED")
+			owner:ChatPrint("GOLDEN DEAG EQUIPPED")
+			owner:ChatPrint("Handle with care, soldier. Or don't.")
+		end
+	end
+	hook.Add("TTTBeginRound", "spawn_1_geagle", spawn_geag)
+	hook.Add("WeaponEquip","geag_alert", geag_alert)
+	--hook.Remove("TTTBeginRound", "spawn_1_geagle")
+	--hook.Remove("WeaponEquip","geag_alert")
 end
 
 -- hup!
@@ -86,29 +94,84 @@ end
 
 
 
-
+-- DASH
 if SERVER then
-	hook.Add("Tick", "dash_key", function()
-		if (Entity(1):KeyDown(2)) then
-			Entity(1):SetVelocity(Entity(1):GetAimVector()*100+Vector(0,0,20))
-			-- if Entity(1):KeyDown(IN_MOVELEFT) then
-			-- 	Entity(1):SetVelocity(Entity(1):GetAimVector()*100)
-			-- end
-			-- if Entity(1):KeyDown(IN_MOVERIGHT) then
-			-- 	Entity(1):SetVelocity(Entity(1):GetAimVector()*100)
-			-- end
-			-- if Entity(1):KeyDown(IN_FORWARD) then
-			-- 	Entity(1):SetVelocity(Entity(1):GetAimVector()*100)
-			-- end	
-			-- if Entity(1):KeyDown(IN_BACK) then
-			-- 	Entity(1):SetVelocity(Entity(1):GetAimVector()*100)
-			-- end
+	util.AddNetworkString("dougie_trigger_dash")
+	util.AddNetworkString("dougie_dash_hook")
+	hook.Add("PlayerSay", "custom_command_dash", function(sender, text, teamChat)
+		if sender:GetUserGroup() ~= "user" then
+			if text == "!dash" then
+				net.Start("dougie_dash_hook")
+				net.WriteBool(true)
+				net.Broadcast()
+			elseif text == "!dash_off" then
+				net.Start("dougie_dash_hook")
+				net.WriteBool(false)
+				net.Broadcast()
+			end
 		end
 	end)
-	--hook.Remove("Tick","dash_key")
+	net.Receive("dougie_trigger_dash", function(len)
+		local ent_index = net.ReadUInt(32)
+		local v = net.ReadVector()
+		Entity(ent_index):SetVelocity(v)
+		Entity(ent_index):EmitSound("Weapon_Crowbar.Single", 70, 50, 0.5, CHAN_BODY)
+	end)
+end
+if CLIENT then
+	net.Receive("dougie_dash_hook", function()
+		if net.ReadBool() then
+			local dash_cooldown = 0.5 --seconds
+			local next_dash_time = CurTime()
+			hook.Add("Tick", "dash_key", function()
+				if LocalPlayer():IsValid() and LocalPlayer():KeyDown(IN_ATTACK2) then -- IN_ATTACK2 : right click by default
+					if CurTime() >= next_dash_time and LocalPlayer():OnGround() then
+						next_dash_time = CurTime() + dash_cooldown
+						local dashvec = LocalPlayer():GetAimVector()
+						dashvec.z = 0.1
+						local keys = {
+							LocalPlayer():KeyDown(IN_FORWARD),
+							LocalPlayer():KeyDown(IN_MOVERIGHT),
+							LocalPlayer():KeyDown(IN_BACK),
+							LocalPlayer():KeyDown(IN_MOVELEFT)}
+						if keys[1] and keys[2] then dashvec:Rotate(Angle(0,-45,0))
+						elseif keys[1] and keys[4] then dashvec:Rotate(Angle(0,45,0))
+						elseif keys[3] and keys[2] then dashvec:Rotate(Angle(0,-135,0))
+						elseif keys[3] and keys[4] then dashvec:Rotate(Angle(0,135,0))
+						elseif keys[1] then
+						elseif keys[4] then dashvec:Rotate(Angle(0,90,0))
+						elseif keys[2] then dashvec:Rotate(Angle(0,-90,0))
+						elseif keys[3] then dashvec:Rotate(Angle(0,180,0))
+						else
+							dashvec = Vector(0,0,1)
+							dashvec:Mul(0.2)
+						end
+						dashvec:Mul(1500)
+						net.Start("dougie_trigger_dash")
+						net.WriteUInt(LocalPlayer():EntIndex(), 32)
+						net.WriteVector(dashvec)
+						net.SendToServer()
+					end
+				end
+			end)
+		else
+			hook.Remove("Tick", "dash_key")
+		end
+	end)
 end
 
-
-if SERVER then
-	for ent in ipairs(entity.Lis)
-end
+-- cleanup command
+hook.Add("PlayerSay", "custom_command_remove_ents", function(sender, text, teamChat)
+	if sender:GetUserGroup() ~= "user" then
+		if text == "!cleanup" then
+			for i,ent in ipairs(ents.GetAll()) do
+				local cla = ent:GetClass()
+				if cla == "prop_physics" or cla == "prop_dynamic" then
+					ent:Remove()
+				elseif ent:IsWeapon() and !ent:GetOwner():IsValid() then
+					ent:Remove()
+				end
+			end
+		end
+	end
+end)
