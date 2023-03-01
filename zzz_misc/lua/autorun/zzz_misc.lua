@@ -128,7 +128,7 @@ if SERVER then
 			ply:SetJumpPower(orig)
 		end)
 		ply:SetVelocity(v)
-		ply:EmitSound("Weapon_Crowbar.Single", 70, 120, 0.5, CHAN_BODY) -- "Weapon_Crowbar.Single"
+		ply:EmitSound("Weapon_Crowbar.Single", 50, 100, 0.3, CHAN_BODY) -- "Weapon_Crowbar.Single"
 		if ply:GetActiveWeapon():IsValid() then
 			ply:GetActiveWeapon().NoSights = true
 		end
@@ -138,12 +138,12 @@ if CLIENT then
 	-- add clientside dash hook
 	net.Receive("dougie_dash_hook", function()
 		if !net.ReadBool() then
-			hook.Remove("Tick", "dash_key")
+			hook.Remove("KeyPress", "dash_key")
 		else
-			local dash_cooldown = 0.5 --seconds
+			local dash_cooldown = 0.3--seconds
 			local next_dash_time = CurTime()
-			hook.Add("Tick", "dash_key", function()
-				if LocalPlayer():IsValid() and LocalPlayer():KeyDown(IN_ATTACK2) then -- IN_ATTACK2 : right click by default
+			hook.Add("KeyPress", "dash_key", function(ply, key)
+				if LocalPlayer():IsValid() and key == IN_ATTACK2 then -- IN_ATTACK2 : right click by default
 					if CurTime() >= next_dash_time and LocalPlayer():OnGround() then
 						next_dash_time = CurTime() + dash_cooldown
 						LocalPlayer():GetActiveWeapon().NoSights = true
@@ -154,6 +154,7 @@ if CLIENT then
 						end)
 						local dashvec = LocalPlayer():GetAimVector()
 						dashvec.z = 0.1
+						-- determine dash direction
 						local keys = {LocalPlayer():KeyDown(IN_FORWARD), LocalPlayer():KeyDown(IN_MOVERIGHT), LocalPlayer():KeyDown(IN_BACK), LocalPlayer():KeyDown(IN_MOVELEFT)}
 						if keys[1] and keys[2] then dashvec:Rotate(Angle(0,-45,0))
 						elseif keys[1] and keys[4] then dashvec:Rotate(Angle(0,45,0))
