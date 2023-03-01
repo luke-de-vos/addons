@@ -108,38 +108,33 @@ if SERVER then
 				net.Start("dougie_dash_hook")
 				net.WriteBool(false)
 				net.Broadcast()
+				-- disable nosights for all weapons. if it causes problems just restart round
+				for i,ent in ipairs(ents.GetAll()) do
+					if ent:IsWeapon() then
+						ent.NoSights = false
+					end
+				end
 			end
 		end
 	end)
 	-- trigger dash serverside
 	util.AddNetworkString("dougie_trigger_dash")
 	net.Receive("dougie_trigger_dash", function(len)
-		local ent_index = net.ReadUInt(32)
+		local ply = Entity(net.ReadUInt(32))
 		local v = net.ReadVector()
-		Entity(ent_index):SetVelocity(v)
-		Entity(ent_index):EmitSound("Weapon_Crowbar.Single", 70, 50, 0.5, CHAN_BODY)
+		local orig = ply:GetJumpPower()
+		ply:SetJumpPower(-100)
+		timer.Simple(0.2, function()
+			ply:SetJumpPower(orig)
+		end)
+		ply:SetVelocity(v)
+		ply:EmitSound("Weapon_Crowbar.Single", 70, 120, 0.5, CHAN_BODY) -- "Weapon_Crowbar.Single"
+		if ply:GetActiveWeapon():IsValid() then
+			ply:GetActiveWeapon().NoSights = true
+		end
 	end)
 end
 if CLIENT then
-	-- determine direction and magnitude of dash vector
-	local function get_dashvec()
-		local dashvec = LocalPlayer():GetAimVector()
-		dashvec.z = 0.1
-		local keys = {LocalPlayer():KeyDown(IN_FORWARD), LocalPlayer():KeyDown(IN_MOVERIGHT), LocalPlayer():KeyDown(IN_BACK), LocalPlayer():KeyDown(IN_MOVELEFT)}
-		if keys[1] and keys[2] then dashvec:Rotate(Angle(0,-45,0))
-		elseif keys[1] and keys[4] then dashvec:Rotate(Angle(0,45,0))
-		elseif keys[3] and keys[2] then dashvec:Rotate(Angle(0,-135,0))
-		elseif keys[3] and keys[4] then dashvec:Rotate(Angle(0,135,0))
-		elseif keys[1] then
-		elseif keys[2] then dashvec:Rotate(Angle(0,-90,0))
-		elseif keys[3] then dashvec:Rotate(Angle(0,180,0))
-		elseif keys[4] then dashvec:Rotate(Angle(0,90,0))
-		else
-			dashvec = Vector(0,0,1)
-			dashvec:Mul(0.2)
-		end
-		dashvec:Mul(1500)
-	end
 	-- add clientside dash hook
 	net.Receive("dougie_dash_hook", function()
 		if !net.ReadBool() then
@@ -151,9 +146,31 @@ if CLIENT then
 				if LocalPlayer():IsValid() and LocalPlayer():KeyDown(IN_ATTACK2) then -- IN_ATTACK2 : right click by default
 					if CurTime() >= next_dash_time and LocalPlayer():OnGround() then
 						next_dash_time = CurTime() + dash_cooldown
+						LocalPlayer():GetActiveWeapon().NoSights = true
+						local orig = LocalPlayer():GetJumpPower()
+						LocalPlayer():SetJumpPower(-100)
+						timer.Simple(0.2, function()
+							LocalPlayer():SetJumpPower(orig)
+						end)
+						local dashvec = LocalPlayer():GetAimVector()
+						dashvec.z = 0.1
+						local keys = {LocalPlayer():KeyDown(IN_FORWARD), LocalPlayer():KeyDown(IN_MOVERIGHT), LocalPlayer():KeyDown(IN_BACK), LocalPlayer():KeyDown(IN_MOVELEFT)}
+						if keys[1] and keys[2] then dashvec:Rotate(Angle(0,-45,0))
+						elseif keys[1] and keys[4] then dashvec:Rotate(Angle(0,45,0))
+						elseif keys[3] and keys[2] then dashvec:Rotate(Angle(0,-135,0))
+						elseif keys[3] and keys[4] then dashvec:Rotate(Angle(0,135,0))
+						elseif keys[1] then dashvec:Rotate(Angle(0,0,0))
+						elseif keys[2] then dashvec:Rotate(Angle(0,-90,0))
+						elseif keys[3] then dashvec:Rotate(Angle(0,180,0))
+						elseif keys[4] then dashvec:Rotate(Angle(0,90,0))
+						else
+							dashvec = Vector(0,0,1)
+							dashvec:Mul(0.2)
+						end
+						dashvec:Mul(1500)
 						net.Start("dougie_trigger_dash")
 						net.WriteUInt(LocalPlayer():EntIndex(), 32)
-						net.WriteVector(get_dashvec())
+						net.WriteVector(dashvec)
 						net.SendToServer()
 					end
 				end
