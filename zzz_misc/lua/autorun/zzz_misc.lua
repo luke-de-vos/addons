@@ -121,6 +121,26 @@ if SERVER then
 	end)
 end
 if CLIENT then
+	-- determine direction and magnitude of dash vector
+	local function get_dashvec()
+		local dashvec = LocalPlayer():GetAimVector()
+		dashvec.z = 0.1
+		local keys = {LocalPlayer():KeyDown(IN_FORWARD), LocalPlayer():KeyDown(IN_MOVERIGHT), LocalPlayer():KeyDown(IN_BACK), LocalPlayer():KeyDown(IN_MOVELEFT)}
+		if keys[1] and keys[2] then dashvec:Rotate(Angle(0,-45,0))
+		elseif keys[1] and keys[4] then dashvec:Rotate(Angle(0,45,0))
+		elseif keys[3] and keys[2] then dashvec:Rotate(Angle(0,-135,0))
+		elseif keys[3] and keys[4] then dashvec:Rotate(Angle(0,135,0))
+		elseif keys[1] then
+		elseif keys[2] then dashvec:Rotate(Angle(0,-90,0))
+		elseif keys[3] then dashvec:Rotate(Angle(0,180,0))
+		elseif keys[4] then dashvec:Rotate(Angle(0,90,0))
+		else
+			dashvec = Vector(0,0,1)
+			dashvec:Mul(0.2)
+		end
+		dashvec:Mul(1500)
+	end
+	-- add clientside dash hook
 	net.Receive("dougie_dash_hook", function()
 		if !net.ReadBool() then
 			hook.Remove("Tick", "dash_key")
@@ -131,29 +151,9 @@ if CLIENT then
 				if LocalPlayer():IsValid() and LocalPlayer():KeyDown(IN_ATTACK2) then -- IN_ATTACK2 : right click by default
 					if CurTime() >= next_dash_time and LocalPlayer():OnGround() then
 						next_dash_time = CurTime() + dash_cooldown
-						local dashvec = LocalPlayer():GetAimVector()
-						dashvec.z = 0.1
-						local keys = {
-							LocalPlayer():KeyDown(IN_FORWARD),
-							LocalPlayer():KeyDown(IN_MOVERIGHT),
-							LocalPlayer():KeyDown(IN_BACK),
-							LocalPlayer():KeyDown(IN_MOVELEFT)}
-						if keys[1] and keys[2] then dashvec:Rotate(Angle(0,-45,0))
-						elseif keys[1] and keys[4] then dashvec:Rotate(Angle(0,45,0))
-						elseif keys[3] and keys[2] then dashvec:Rotate(Angle(0,-135,0))
-						elseif keys[3] and keys[4] then dashvec:Rotate(Angle(0,135,0))
-						elseif keys[1] then
-						elseif keys[4] then dashvec:Rotate(Angle(0,90,0))
-						elseif keys[2] then dashvec:Rotate(Angle(0,-90,0))
-						elseif keys[3] then dashvec:Rotate(Angle(0,180,0))
-						else
-							dashvec = Vector(0,0,1)
-							dashvec:Mul(0.2)
-						end
-						dashvec:Mul(1500)
 						net.Start("dougie_trigger_dash")
 						net.WriteUInt(LocalPlayer():EntIndex(), 32)
-						net.WriteVector(dashvec)
+						net.WriteVector(get_dashvec())
 						net.SendToServer()
 					end
 				end
