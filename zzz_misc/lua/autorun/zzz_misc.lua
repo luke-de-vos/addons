@@ -96,7 +96,7 @@ end
 
 -- DASH
 if SERVER then
-	util.AddNetworkString("dougie_trigger_dash")
+	-- toggle dashing with chat command
 	util.AddNetworkString("dougie_dash_hook")
 	hook.Add("PlayerSay", "custom_command_dash", function(sender, text, teamChat)
 		if sender:GetUserGroup() ~= "user" then
@@ -111,6 +111,8 @@ if SERVER then
 			end
 		end
 	end)
+	-- trigger dash serverside
+	util.AddNetworkString("dougie_trigger_dash")
 	net.Receive("dougie_trigger_dash", function(len)
 		local ent_index = net.ReadUInt(32)
 		local v = net.ReadVector()
@@ -120,7 +122,9 @@ if SERVER then
 end
 if CLIENT then
 	net.Receive("dougie_dash_hook", function()
-		if net.ReadBool() then
+		if !net.ReadBool() then
+			hook.Remove("Tick", "dash_key")
+		else
 			local dash_cooldown = 0.5 --seconds
 			local next_dash_time = CurTime()
 			hook.Add("Tick", "dash_key", function()
@@ -154,8 +158,6 @@ if CLIENT then
 					end
 				end
 			end)
-		else
-			hook.Remove("Tick", "dash_key")
 		end
 	end)
 end
