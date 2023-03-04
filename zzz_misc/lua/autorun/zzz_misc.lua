@@ -28,7 +28,7 @@ if SERVER then
 		if wep:GetClass() == "weapon_ttt_powerdeagle" then
 			owner:PrintMessage(HUD_PRINTCENTER, "GOLDEN DEAG EQUIPPED")
 			owner:ChatPrint("GOLDEN DEAG EQUIPPED")
-			owner:ChatPrint("Handle with care, soldier. Or don't.")
+			owner:ChatPrint("Handle with care, soldier.")
 		end
 	end
 	hook.Add("TTTBeginRound", "spawn_1_geagle", spawn_geag)
@@ -95,6 +95,8 @@ end
 
 
 -- DASH
+local DASH_COOLDOWN = 0.75	--seconds
+local JUMP_LOCKOUT = 0.2--seconds
 if SERVER then
 	-- toggle dashing with chat command
 	util.AddNetworkString("dougie_dash_hook")
@@ -124,7 +126,7 @@ if SERVER then
 		local v = net.ReadVector()
 		local orig = ply:GetJumpPower()
 		ply:SetJumpPower(-100)
-		timer.Simple(0.2, function()
+		timer.Simple(JUMP_LOCKOUT, function()
 			ply:SetJumpPower(orig)
 		end)
 		ply:SetVelocity(v)
@@ -140,18 +142,17 @@ if CLIENT then
 		if !net.ReadBool() then
 			hook.Remove("KeyPress", "dash_key")
 		else
-			local dash_cooldown = 0.3--seconds
 			local next_dash_time = CurTime()
 			hook.Add("KeyPress", "dash_key", function(ply, key)
 				if LocalPlayer():IsValid() and key == IN_ATTACK2 then -- IN_ATTACK2 : right click by default
 					if CurTime() >= next_dash_time and LocalPlayer():OnGround() then
-						next_dash_time = CurTime() + dash_cooldown
+						next_dash_time = CurTime() + DASH_COOLDOWN
 						LocalPlayer():GetActiveWeapon().NoSights = true
-						local orig = LocalPlayer():GetJumpPower()
-						LocalPlayer():SetJumpPower(-100)
-						timer.Simple(0.2, function()
-							LocalPlayer():SetJumpPower(orig)
-						end)
+						-- local orig = LocalPlayer():GetJumpPower()
+						-- LocalPlayer():SetJumpPower(-100)
+						-- timer.Simple(JUMP_LOCKOUT, function()
+						-- 	LocalPlayer():SetJumpPower(orig)
+						-- end)
 						local dashvec = LocalPlayer():GetAimVector()
 						dashvec.z = 0.1
 						-- determine dash direction

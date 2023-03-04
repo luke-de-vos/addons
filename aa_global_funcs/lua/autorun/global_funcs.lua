@@ -218,6 +218,12 @@ if SERVER then
         end
         mode_hooks = {}
     end
-end
 
+
+
+
+    
+_give_current_ammo(Entity(1), 10)
+
+end
 

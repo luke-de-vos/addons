@@ -11,17 +11,28 @@ if SERVER then
 
 	AddCSLuaFile()
 	
+	local DEFAULT_WEAPON = "barrel_wand"
+	local req_weapon = DEFAULT_WEAPON -- DEFAULT. USED UNLESS SPECIFIED IN COMMAND
 	hook.Add("PlayerSay", "custom_commands_ffa", function(sender, text, teamChat)
 		if sender:GetUserGroup() ~= "user" then
-			if text == "!ffa" then ffa_on()
-			elseif text == "!ttt" then reg_ttt() 
-			elseif text == "!block" then ffa_on() pups_on() end
+			args = _my_split(text, " ")
+			if args then
+				if args[1] == '!ffa' then
+					if #args > 1 then
+						req_weapon = args[2]
+						if req_weapon == "mywep" and IsValid(sender:GetActiveWeapon()) then
+							req_weapon = sender:GetActiveWeapon():GetClass()
+						end
+					end
+					ffa_on(req_weapon)
+				elseif args[1] == "!ttt" then reg_ttt() 
+				elseif args[1] == "!block" then ffa_on(req_weapon) pups_on() end
+			end
 		end
 	end)
 
 	-- restart round and begin free for all deags 
-	function ffa_on()
-
+	function ffa_on(req_weapon)
 		_drop_hooks()
 		local died_with = {}  -- track what weapon player died with. Equip that weapon on spawn
 		
@@ -31,27 +42,34 @@ if SERVER then
 			for i,ply in ipairs(player.GetAll()) do
 				ply:SetRole(0)
 				ply:SetFrags(0)
+				died_with = {}
 			end
 		end)
 
 		-- on spawn: reset kill trackers, gain and equip weapons
-		_add_hook("PlayerSpawn", "ffa_PlayerSpawn", function(ply, transition) 
+		_add_hook("PlayerSpawn", "ffa_PlayerSpawn", function(ply, transition)
 			ply:SetRole(0)
+			local given_weapon = nil
 			local last_wep = died_with[ply:UserID()]
 			-- give weapon
-			timer.Simple(0.1, function()
-				ply:Give("awpv2")
-				ply:Give("weapon_ttt_deaglev2")
-				ply:Give("barrel_wand")
-				if last_wep ~= nil then ply:Give(last_wep) end
-			end)
-			-- equip weapon
-			timer.Simple(0.2, function() 
-				if last_wep ~= nil and ply:HasWeapon(last_wep) then
-					ply:SelectWeapon(last_wep)
-				elseif ply:HasWeapon("barrel_wand") then -- default select
-					ply:SelectWeapon("barrel_wand")
+			if last_wep ~= nil then
+				ply:Give(last_wep)
+				given_weapon = last_wep
+			else
+				local gave_request = nil
+				gave_request = IsValid(ply:Give(req_weapon))
+				given_weapon = req_weapon
+				if !gave_request then
+					print('Failed to GIVE '..req_weapon)
+					ply:Give(DEFAULT_WEAPON)
+					given_weapon = DEFAULT_WEAPON
 				end
+			end
+
+			-- equip weapon
+			timer.Simple(0.2, function()
+				ply:SelectWeapon(given_weapon)
+				_give_current_ammo(ply, 2)
 			end)
 			
 		end)
