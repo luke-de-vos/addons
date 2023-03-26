@@ -196,3 +196,33 @@ hook.Add("PlayerSay", "custom_command_remove_ents", function(sender, text, teamC
 		end
 	end
 end)
+
+
+-- HUP
+resource.AddFile("sound/h1.mp3")
+resource.AddFile("sound/h2.mp3")
+local hup_table = {"h1.mp3", "h2.mp3"}
+local hup_message_name = "hup_message"
+if CLIENT then
+	local hook_type= "Think"
+	local hook_name = "hup_think"
+	local next_hup_time = 0
+	local hup_cooldown = 4 --seconds
+	hook.Add(hook_type, hook_name, function()
+		if input.IsButtonDown(KEY_H) then
+			if CurTime() > next_hup_time then
+				net.Start(hup_message_name)
+					net.WriteInt(LocalPlayer():EntIndex(), 16)
+					net.SendToServer()
+				next_hup_time = CurTime() + hup_cooldown
+			end
+		end
+	end)
+	--hook.Remove(hook_type, hook_name)
+end
+if SERVER then
+	util.AddNetworkString(hup_message_name)
+	net.Receive(hup_message_name, function()
+		Entity(net.ReadInt(16)):EmitSound(hup_table[math.random(#hup_table)], 60)
+	end)
+end
