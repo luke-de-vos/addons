@@ -64,7 +64,7 @@ SWEP.Secondary.Automatic = false
 SWEP.Ammo = "None"
 
 local AnnounceSound = Sound("shank/dontgetshanked.wav");
-local AttackSound = Sound("shank/attack1.wav");
+local AttackSound = Sound("Weapon_357.Single");
 local Attack2Sound = Sound("shank/hyuking.wav");
 local ReloadSound = Sound("shank/toldya.wav");
 
@@ -83,53 +83,50 @@ function SWEP:PrimaryAttack()
 		return
 	end
 
-    local vm = self.Owner:GetViewModel()
     local tr = self.Owner:GetEyeTrace()
-	local hitEnt = nil
 	
     if (tr.HitPos - self.Owner:GetShootPos()):Length() < 70 then
 
-		hitEnt = tr.Entity
+		local hitEnt = tr.Entity
 
 		if IsValid(hitEnt) then
-			-- destroy body
-			if SERVER then
-				--self:EmitSound("Weapon_FlareGun.Single")
-				if hitEnt:GetClass() == "prop_ragdoll" then
-					self.Weapon:SendWeaponAnim( ACT_VM_MISSCENTER )
-					self:SetNextPrimaryFire(CurTime() + 0.8)
+			local did_stab = false
+			-- stab and kill
+			local dmginfo = DamageInfo()
+			dmginfo:SetDamageType(DMG_SLASH)
+			dmginfo:SetAttacker(self.Owner)
+			dmginfo:SetInflictor(self)
+			Unvanish(self:GetOwner())
+			self:SetNextPrimaryFire(CurTime() + 0.8)
+			if hitEnt:GetClass() == "prop_ragdoll" then
+				did_stab = true
+				if SERVER then
+					--timer.Simple(0.1, function() self:EmitSound("npc/combine_soldier/vo/slash.wav", 75, 100, 1, CHAN_AUTO) end)
 					hitEnt:Remove()
+					_slash_effect(tr.Entity)
 				end
-				-- stab and kill
-				if hitEnt:IsPlayer() then 
-					
-					self.Weapon:SendWeaponAnim( ACT_VM_MISSCENTER )
-					self:SetNextPrimaryFire(CurTime() + 0.8)
-
-					-- get hit angle on victim
-					local angle = self.Owner:GetAngles().y - tr.Entity:GetAngles().y
-					if angle < -180 then
-						angle = angle + 360
-					end
-					
-					local dmginfo = DamageInfo()
-					if angle <= 90 and angle >= -90 then -- if backstab then
-						dmginfo:SetDamage(200)
-						vm = self.Owner:GetViewModel() -- edit: pointless?
-					else
-						dmginfo:SetDamage(100)
-					end
-					dmginfo:SetDamageType(DMG_SLASH)
-					dmginfo:SetAttacker(self.Owner)
-					dmginfo:SetInflictor(self)
+			elseif hitEnt:IsPlayer() then
+				did_stab = true
+				if SERVER then
+					dmginfo:SetDamage(100)
+					dmginfo:SetDamageForce((self:GetOwner():GetAimVector()*10))
 					tr.Entity:TakeDamageInfo(dmginfo)
 					_slash_effect(tr.Entity)
 				end
+			elseif string.match(hitEnt:GetClass(), '.*door.*') then
+				did_stab = true
+				if SERVER then
+					timer.Simple(0.1, function() self:EmitSound("plats/tram_hit4.wav", 75, 100, 0.5, CHAN_AUTO) end) 
+					dmginfo:SetDamage(200)
+					dmginfo:SetDamageForce((self:GetOwner():GetAimVector()*50))
+					tr.Entity:TakeDamageInfo(dmginfo)
+				end
 			end
-		end
-        
-		if SERVER then
-			self:GetOwner():SetAnimation( PLAYER_ATTACK1 )
+			if did_stab then
+				self:GetOwner():DoAttackEvent()
+				self.Weapon:SendWeaponAnim( ACT_VM_MISSCENTER )
+				self:EmitSound("Weapon_Crowbar.Single", 50, 100, 0.3, CHAN_BODY)
+			end
 		end
 	end
 end
@@ -158,8 +155,13 @@ function Vanish(ply)
 	ply:SetMaterial("effects/blood") -- make model invisible
 	ply:GetActiveWeapon():SetMaterial("effects/blood")
 	--ply:DrawShadow(false)
+	hook.Add("EntityTakeDamage", ply:EntIndex().."vanish", function(vic, dmg)
+		if vic:EntIndex() == ply:EntIndex() then
+			dmg:ScaleDamage(5)
+		end
+	end)
 
-	local timer_name = "vanish_timer_"..ply:SteamID()
+	local timer_name = "vanish_timer_"..ply:EntIndex()
 	timer.Remove(timer_name)
 	timer.Create(timer_name, VANISH_TIME, 1, function()
 		Unvanish(ply)
@@ -168,6 +170,7 @@ end
 
 function Unvanish(ply)
 	ply:SetWalkSpeed(DEFAULT_WALK_SPEED)
+	hook.Remove("EntityTakeDamage", ply:EntIndex().."vanish")
 	if ply:GetMaterial() == "effects/blood" then
 		ply:SetMaterial("") -- make model visible
 		ply:GetActiveWeapon():SetMaterial("")
@@ -188,7 +191,6 @@ function SWEP:PreDrop()
 end
 
 function SWEP:OnRemove()
-	
     if CLIENT and IsValid(self:GetOwner()) and self:GetOwner() == LocalPlayer() and self:GetOwner():Alive() then
         RunConsoleCommand("lastinv")
 	end
