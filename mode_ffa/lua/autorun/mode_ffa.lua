@@ -52,6 +52,21 @@ if SERVER then
 			local given_weapon = nil
 			local last_wep = died_with[ply:UserID()]
 			-- give weapon
+			timer.Simple(0.2, function()
+				if last_wep ~= nil then
+					ply:Give(last_wep)
+					given_weapon = last_wep
+				else
+					local gave_request = nil
+					gave_request = IsValid(ply:Give(req_weapon))
+					given_weapon = req_weapon
+					if !gave_request then
+						print('Failed to GIVE '..req_weapon)
+						ply:Give(DEFAULT_WEAPON)
+						given_weapon = DEFAULT_WEAPON
+					end
+				end
+			end)
 			if last_wep ~= nil then
 				ply:Give(last_wep)
 				given_weapon = last_wep
@@ -67,9 +82,9 @@ if SERVER then
 			end
 
 			-- equip weapon
-			timer.Simple(0.2, function()
-				ply:SelectWeapon(given_weapon)
-				_give_current_ammo(ply, 2)
+			timer.Simple(0.3, function()
+				ply:SelectWeapon(req_weapon)
+				_give_current_ammo(ply, 10)
 			end)
 			
 		end)
@@ -77,7 +92,7 @@ if SERVER then
 		-- on pre-kill: award ammo, record victim's held weapon
 		_add_hook("DoPlayerDeath", "ffa_DoPlayerDeath", function(ply, attacker, dmg)
 			-- record what victim was holding when killed
-			died_with[ply:UserID()] = ply:GetActiveWeapon():GetPrintName()
+			died_with[ply:UserID()] = ply:GetActiveWeapon():GetClass()
 			-- killer gets a mag for current weapon
 			if (attacker:IsPlayer() and attacker:UserID() ~= ply:UserID() ) then 
 				_give_current_ammo(attacker, 1)
@@ -97,7 +112,7 @@ if SERVER then
 				attacker:AddFrags(1)
 				if victim:LastHitGroup() == 1 then
 					if inflictor:GetClass() != 'prop_physics' then
-						_headshot_effect(victim)
+						--_headshot_effect(victim)
 					end
 				end
 			end
