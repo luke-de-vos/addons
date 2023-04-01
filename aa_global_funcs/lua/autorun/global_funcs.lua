@@ -218,12 +218,24 @@ if SERVER then
         end
         mode_hooks = {}
     end
-
-
-
-
-    
-_give_current_ammo(Entity(1), 10)
-
 end
 
+-- colored chat
+if SERVER then 
+    util.AddNetworkString( "SendColouredChat" )
+    function SendColouredChat( text )
+        net.Start( "SendColouredChat" )
+            net.WriteTable( Color( 255, 255, 0, 255 ) )
+            net.WriteString( text )
+        net.Broadcast()
+    end
+end
+
+if CLIENT then 
+    function ReceiveColouredChat()
+        local color = net.ReadTable()
+        local str = net.ReadString()
+        chat.AddText( color, str )
+    end
+    net.Receive( "SendColouredChat", ReceiveColouredChat )
+end
