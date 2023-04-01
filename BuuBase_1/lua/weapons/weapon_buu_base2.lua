@@ -12,6 +12,10 @@ If you need anything, I'm always reachable ^^
 https://github.com/buu342/GMod-BuuBaseRedone
 **************************************************************/
 
+-- if SERVER then
+--     Entity(1):Give("weapon_buu_base2")
+-- end
+
 AddCSLuaFile()
 
 SWEP.Base                  = "weapon_tttbase"
@@ -26,30 +30,30 @@ SWEP.Instructions = "Left click to shoot, right click to use sights."
 SWEP.Category     = "Buu342"
 
 -- Spawning settings
-SWEP.Spawnable      = false
-SWEP.AdminSpawnable = false 
+SWEP.Spawnable      = true
+SWEP.AdminSpawnable = true 
 SWEP.AdminOnly      = false
 
 -- HUD and viewmodel settings
 SWEP.DrawAmmo        = true
-SWEP.DrawCrosshair   = false
+SWEP.DrawCrosshair   = true
 SWEP.ViewModelFOV    = 45
 SWEP.ViewModelFlip   = false
 SWEP.UseHands        = true
 
 -- Model settings
-SWEP.ViewModel  = "models/weapons/c_irifle.mdl"
-SWEP.WorldModel = "models/weapons/w_smg1.mdl"
+SWEP.ViewModel  = "models/weapons/cstrike/c_smg_mac10.mdl"
+SWEP.WorldModel = "models/weapons/w_smg_mac10.mdl"
 
 -- Primary Fire Mode
 SWEP.Primary.Sound       = Sound("weapons/smg1/smg1_fire1.wav")  -- This can be a table for multiple sounds!
-SWEP.Primary.Recoil      = 0.2
+SWEP.Primary.Recoil      = 1.5
 SWEP.Primary.Damage      = 4
 SWEP.Primary.NumShots    = 1
-SWEP.Primary.Cone        = 0.02
-SWEP.Primary.Delay       = 0.05
+SWEP.Primary.Cone        = 0.001
+SWEP.Primary.Delay       = 0.33
 SWEP.Primary.TakeAmmo    = 1
-SWEP.Primary.ClipSize    = 45
+SWEP.Primary.ClipSize    = 10
 SWEP.Primary.DefaultClip = 500
 SWEP.Primary.Automatic   = true
 SWEP.Primary.Ammo        = "smg1"
@@ -91,7 +95,7 @@ SWEP.EmptySound       = Sound("buu/base/empty.wav") -- Empty firing sound
 SWEP.MuzzleEffect     = "buu_muzzle"                -- Muzzleflash effect
 SWEP.MuzzleEffectS    = "buu_muzzle_silenced"       -- Silenced muzzleflash effect
 SWEP.ThirdPersonShell = "RifleShellEject"                          -- Third person bullet shell ejection effect
-SWEP.MuzzleLight      = Color(0, 105, 0)          -- Muzzle light. -1 to not use.
+SWEP.MuzzleLight      = Color(190, 105, 0)          -- Muzzle light. -1 to not use.
 
 SWEP.CrosshairType   = 1  -- None (0), Normal (1), Sniper (2), Shotgun (3)
 SWEP.CrosshairGap    = -1 -- The gap to use for the crosshair. -1 to auto generate the gap based on recoil+cone
@@ -107,7 +111,7 @@ SWEP.CanNearWall      = false -- Allow being near a wall to holster the weapon?
 SWEP.CanLadder        = false -- Allow being on a ladder causing the weapon to holster?
 SWEP.CanSlide         = false -- Allow sliding
 SWEP.CanSmoke         = true -- Allow smoke trail if firing for very long
-SWEP.CanLowAmmoClick  = true -- Allow the clicking sound when running low on ammo?
+SWEP.CanLowAmmoClick  = false -- Allow the clicking sound when running low on ammo?
 SWEP.CustomFlashlight = true -- Use custom flashlight
 
 
@@ -997,7 +1001,7 @@ function SWEP:BulletCallback(attacker, tr, dmginfo, pencount)
     
     -- Correct the penetration count if it's nil, and ensure we don't penetrate more
     pencount = pencount or 0
-    if (pencount+1 > self.PenetrateMax) then return end
+    if (pencount+1 > self.PenetrateCount) then return end
     
     -- Create a trace on where we hit, in the direction the bullet was going
     local PenDir = tr.Normal*self.PenetrateMax
