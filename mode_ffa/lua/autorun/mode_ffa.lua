@@ -11,7 +11,7 @@ if SERVER then
 
 	AddCSLuaFile()
 	
-	local DEFAULT_WEAPON = "barrel_wand"
+	local DEFAULT_WEAPON = "weapon_zm_revolver"
 	local req_weapon = DEFAULT_WEAPON -- DEFAULT. USED UNLESS SPECIFIED IN COMMAND
 	hook.Add("PlayerSay", "custom_commands_ffa", function(sender, text, teamChat)
 		if sender:GetUserGroup() ~= "user" then
