@@ -207,7 +207,7 @@ if CLIENT then
 	local hook_type= "Think"
 	local hook_name = "hup_think"
 	local next_hup_time = 0
-	local hup_cooldown = 4 --seconds
+	local hup_cooldown = 1 --seconds
 	hook.Add(hook_type, hook_name, function()
 		if input.IsButtonDown(KEY_H) then
 			if CurTime() > next_hup_time then
@@ -226,3 +226,5 @@ if SERVER then
 		Entity(net.ReadInt(16)):EmitSound(hup_table[math.random(#hup_table)], 60)
 	end)
 end
+
+
