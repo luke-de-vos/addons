@@ -33,8 +33,11 @@ local function restrict(ply, weapon_class)
         ply:Give(weapon_class)
     end
     ply:SelectWeapon(weapon_class)
-    add_hook_til_prep("PlayerSwitchWeapon", ply:SteamID..'_restricted', function(ply, oldwep, newwep)
-        ply:SetActiveWeapon(weapon_class)
+    add_hook_til_prep("PlayerSwitchWeapon", ply:SteamID()..'_restricted', function(ply, oldwep, newwep)
+        print(oldwep, newwep)
+        timer.Simple(0.1, function() 
+            ply:SetActiveWeapon(oldwep) 
+        end)
     end)
 end
 
@@ -144,6 +147,14 @@ end
 
 local function huges()
 
+    if CLIENT then return end
+
+    for i,ply in ipairs(player.GetAll()) do
+        restrict(ply, "weapon_zm_sledge")
+    end
+
+    SendColouredChat("LET'S GET HUGE")
+
 end
 
 local function invert_damage()
@@ -178,13 +189,20 @@ local function last_to_jump()
             who_jumped[ply:EntIndex()] = true
 
             if count_pairs(who_jumped) == #player.GetAll() - 1 then
+
                 for i,iply in ipairs(player.GetAll()) do
+
                     if who_jumped[iply:EntIndex()] == nil then
                         hook.Remove(hook_type, hook_name) 
                         SendColouredChat(iply:Nick().." was the last to jump!")
-                        restrict(iply, "weapon_zm_improvised")
+                        iply:SelectWeapon("weapon_zm_improvised")
+                        add_hook_til_prep("PlayerSwitchWeapon", iply:SteamID()..'crowbie_only', function(ply, oldwep, newwep)
+                            iply:SetActiveWeapon("weapon_zm_improvised")
+                        end)
                     end
+
                 end
+
             end
 
         end
@@ -209,14 +227,19 @@ local function last_to_take_damage()
 
             who_got_hurt[vic:EntIndex()] = true
 
-            if count_pairs(who_got_hurt) == #player.GetAll() - 1 then -- why is #who_got_hurt jumping from 0 to numplayers?
+            if count_pairs(who_got_hurt) == #player.GetAll() - 1 then -- why is #who_got_hurt jumping from 0 to 4?
+                
                 for i,iply in ipairs(player.GetAll()) do
                     if who_got_hurt[iply:EntIndex()] == nil then
                         hook.Remove(hook_type, hook_name)
                         SendColouredChat(iply:Nick().." took damage last!")
-                        restrict(iply, "weapon_zm_improvised")
+                        iply:SelectWeapon("weapon_zm_improvised")
+                        add_hook_til_prep("PlayerSwitchWeapon", iply:SteamID()..'crowbie_only', function(ply, oldwep, newwep)
+                            iply:SetActiveWeapon("weapon_zm_improvised")
+                        end)
                     end
                 end
+
             end
 
         end
@@ -326,9 +349,12 @@ end
 -- prompt effects
 
 local options = {
-    crowbar_zombies, 
+    butter_fingers,
+    crowbar_zombies,
+    fade_to_black,
     first_to_jump, 
-    high_grav, 
+    high_grav,
+    huges,
     invert_damage, 
     last_to_jump, 
     last_to_take_damage, 
@@ -340,7 +366,7 @@ local options = {
 hook.Add("TTTBeginRound", "random_effects_begin_round", function()
     if CLIENT then return end
     --options[math.random(#options)]()
-    butter_fingers()
+    huges()
 end)
 --hook.Remove("TTTBeginRound", "random_effects_begin_round")
 
