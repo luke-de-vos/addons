@@ -34,10 +34,15 @@ local function restrict(ply, weapon_class)
     end
     ply:SelectWeapon(weapon_class)
     add_hook_til_prep("PlayerSwitchWeapon", ply:SteamID()..'_restricted', function(ply, oldwep, newwep)
-        print(oldwep, newwep)
-        timer.Simple(0.1, function() 
-            ply:SetActiveWeapon(oldwep) 
-        end)
+        if newwep:GetClass() != weapon_class and newwep:GetClass() != "weapon_ttt_unarmed" then
+            timer.Simple(0.1, function() 
+                if ply:HasWeapon(weapon_class) then 
+                    ply:SelectWeapon(weapon_class)
+                else
+                    ply:SelectWeapon("weapon_ttt_unarmed")
+                end 
+            end)
+        end
     end)
 end
 
@@ -58,6 +63,7 @@ local function butter_fingers()
             ply = Entity(math.random(#player.GetAll()))
             if ply:Alive() then
                 done = true
+                if not IsValid(ply:GetActiveWeapon()) then return end
                 if ply:GetActiveWeapon():GetClass() == 'weapon_ttt_unarmed' then return end
                 if ply:GetActiveWeapon():GetClass() == 'weapon_zm_carry' then return end
                 ply:DropWeapon()
@@ -110,6 +116,21 @@ local function fade_to_black()
 
 end
 
+local function fire_sale()
+    if CLIENT then return end
+    RunConsoleCommand("ttt_inno_shop_fallback","traitor")
+    hook.Add("TTTPrepareRound", "fire_sale_remove_on_prep", function()
+        RunConsoleCommand("ttt_inno_shop_fallback","DISABLED")
+        hook.Remove("TTTPrepareRound", "fire_sale_remove_on_prep")
+    end)
+    for i,ply in ipairs(player.GetAll()) do
+        if ply:GetRole() == ROLE_INNOCENT then
+            RunConsoleCommand("ulx","credits",ply:Nick(),3)
+        end
+    end
+    SendColouredChat("Fire sale!")
+end
+
 local function first_to_jump()
 
     if CLIENT then return end
@@ -117,6 +138,7 @@ local function first_to_jump()
     local hook_type = "KeyPress"
     local hook_name = "first_to_jump"..hook_type
 
+    
     add_hook_til_prep(hook_type, hook_name, function(ply, key)
 
         if key == IN_JUMP then
@@ -141,7 +163,7 @@ local function high_grav()
         hook.Remove("TTTPrepareRound", "low_grav_prepare_round")
     end)
 
-    SendColouredChat("Extreme gravity enabled!")
+    SendColouredChat("~The gang visits Jupiter~")
 
 end
 
@@ -151,6 +173,7 @@ local function huges()
 
     for i,ply in ipairs(player.GetAll()) do
         restrict(ply, "weapon_zm_sledge")
+        _give_current_ammo(ply, 4)
     end
 
     SendColouredChat("LET'S GET HUGE")
@@ -195,10 +218,7 @@ local function last_to_jump()
                     if who_jumped[iply:EntIndex()] == nil then
                         hook.Remove(hook_type, hook_name) 
                         SendColouredChat(iply:Nick().." was the last to jump!")
-                        iply:SelectWeapon("weapon_zm_improvised")
-                        add_hook_til_prep("PlayerSwitchWeapon", iply:SteamID()..'crowbie_only', function(ply, oldwep, newwep)
-                            iply:SetActiveWeapon("weapon_zm_improvised")
-                        end)
+                        restrict(iply, "weapon_zm_improvised")
                     end
 
                 end
@@ -233,10 +253,7 @@ local function last_to_take_damage()
                     if who_got_hurt[iply:EntIndex()] == nil then
                         hook.Remove(hook_type, hook_name)
                         SendColouredChat(iply:Nick().." took damage last!")
-                        iply:SelectWeapon("weapon_zm_improvised")
-                        add_hook_til_prep("PlayerSwitchWeapon", iply:SteamID()..'crowbie_only', function(ply, oldwep, newwep)
-                            iply:SetActiveWeapon("weapon_zm_improvised")
-                        end)
+                        restrict(iply, "weapon_zm_improvised")
                     end
                 end
 
@@ -260,7 +277,7 @@ local function low_grav()
         hook.Remove("TTTPrepareRound", "low_grav_prepare_round")
     end)
 
-    SendColouredChat("Low gravity enabled!")
+    SendColouredChat("~The gang visits Pluto~")
 
 end
 
@@ -303,7 +320,7 @@ local function slaps()
         end
     end)
 
-    SendColouredChat("SLAP CITY, SLAP SLAP SLAP CITY")
+    SendColouredChat("\"Slap city bitch, slap slap city bitch.\"")
 
 end
 
@@ -325,7 +342,6 @@ local function switcheroo()
         end
 
         if #alive > 1 then
-            SendColouredChat("Switch!")
             local i1 = math.random(#alive)
             local i2 = i1
             while i1 == i2 do
@@ -336,13 +352,15 @@ local function switcheroo()
             local temp = ply1:GetPos()
             ply1:SetPos(ply2:GetPos())
             ply2:SetPos(temp)
-            ply1:EmitSound("Weapon_Crossbow.Single")
-            ply2:EmitSound("Weapon_Crossbow.Single")
+            _effect("sparks", ply1:GetPos(), 5, 1, 1)
+            _effect("sparks", ply2:GetPos(), 5, 1, 1)
+            ply1:EmitSound("Weapon_Crossbow.Single", 75, 100, 0.8)
+            ply2:EmitSound("Weapon_Crossbow.Single", 75, 100, 0.8)
         end
 
     end)
 
-    SendColouredChat("SWITCHIN TIME")
+    SendColouredChat("SWITCHEROO")
 
 end
 
@@ -352,6 +370,7 @@ local options = {
     butter_fingers,
     crowbar_zombies,
     fade_to_black,
+    fire_sale,
     first_to_jump, 
     high_grav,
     huges,
@@ -365,8 +384,13 @@ local options = {
 
 hook.Add("TTTBeginRound", "random_effects_begin_round", function()
     if CLIENT then return end
-    --options[math.random(#options)]()
-    huges()
+    pick1 = math.random(#options)
+    pick2 = pick1
+    while pick2 == pick1 do
+        pick2 = math.random(#options)
+    end
+    options[pick1]()
+    options[pick2]()
 end)
 --hook.Remove("TTTBeginRound", "random_effects_begin_round")
 
