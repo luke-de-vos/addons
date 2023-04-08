@@ -38,16 +38,16 @@ end
 
 
 local function get_next_empty_pos(origin, dir, max_depth, contents_src)
+	-- contents_src: PointContents at bullet's source pos. treat that value as empty space
 	local depth = 0
 	local next_pos = origin
 	while true do
-		--print(util.PointContents(next_pos), contents_src)
-		next_pos = next_pos + dir
+		next_pos = next_pos + dir -- the +dir is very important
 		depth = depth + 1
-		if util.PointContents(next_pos) == CONTENTS_EMPTY or util.PointContents(next_pos) == contents_src then
-			return next_pos, depth
-		end
-		if depth > max_depth then
+		print("\t"..util.PointContents(next_pos), contents_src)
+		if util.PointContents(next_pos) == CONTENTS_EMPTY 
+		or util.PointContents(next_pos) == contents_src 
+		or depth > max_depth then
 			return next_pos, depth
 		end
 	end
@@ -58,8 +58,8 @@ local function bullet_entry(tr, fmj_dir, bdata)
 	-- effect
 	impact(tr)
 	-- apply damage
-	if IsValid(tr.Entity) and tr.Entity:GetClass() != "prop_physics" then -- world entity is not valid
-		tr.Entity:TakeDamage(bdata.Damage, bdata.Attacker, bdata.Attacker:GetActiveWeapon())
+	if IsValid(tr.Entity) /*and tr.Entity:GetClass() != "prop_physics"*/ then -- world entity is not valid
+		tr.Entity:TakeDamage(bdata.Damage/2, bdata.Attacker, bdata.Attacker:GetActiveWeapon())
 	end
 	-- if body, do blood. else, do force
 	if tr.Entity:IsPlayer() /*or tr.Entity:GetClass() == "prop_ragdoll"*/ then
@@ -140,16 +140,16 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 				-- tracer
 			do_tracer(shooter:GetActiveWeapon(), tr)
 		
-			--draw_sphere(tr.StartPos) -- exit_pos becomes next tr.StartPos
-			--draw_sphere(tr.HitPos)
+			draw_sphere(tr.StartPos) -- exit_pos becomes next tr.StartPos
+			draw_sphere(tr.HitPos)
 
 			if tr.HitSky then 
-				print("\tExit: hit sky") 
+				print("\tExit", "hit sky") 
 				exit_pos = tr.HitPos
 				break 
 			end
 			if tr.Entity == NULL then
-				print("\tExit: hit NULL") 
+				print("\tExit", "hit NULL") 
 				exit_pos = tr.HitPos
 				break 
 			end
@@ -161,7 +161,8 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 
 			exit_pos, this_depth = get_next_empty_pos(tr.HitPos, fmj_dir, max_depth-pierced_depth, util.PointContents(bdata.Src))
 			if pierced_depth + this_depth > max_depth then 
-				print("\tHIT DEPTH LIMIT") 
+				print("\tExit", "Depth limit") 
+				draw_sphere(exit_pos)
 				break 
 			end
 			pierced_depth = pierced_depth + this_depth
@@ -174,23 +175,23 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 
 			traceno = traceno + 1
 			if traceno > max_traces then 
-				print("\tHIT TRACE LIMIT") 
+				print("\tExit", "Trace limit", max_traces) 
 				break 
 			end
 
 			-- prepare next nonsolid trace
-			if tr.Entity:IsPlayer() /*or tr.Entity:GetClass() == "prop_ragdoll"*/ then
+			if tr.Entity:IsPlayer() or tr.Entity:GetClass() == "prop_ragdoll" then
 				filter = tr.Entity 
-			elseif tr.Entity:IsValid() and tr.Entity:GetClass() == "prop_physics" then
+			elseif tr.Entity:GetClass() == "prop_physics" then
 				filter = tr.Entity 
-			-- elseif tr.Entity == NULL then
-			-- 	filter = tr.Entity 
+			elseif tr.Entity:GetClass() == "prop_dynamic" then
+				filter = tr.Entity
 			end
 
 		end
 
-		print("\tpierced depth: ", pierced_depth, max_depth)
-		--draw_line(bdata.Src, exit_pos)
+		print("\tPierced depth: ", pierced_depth, max_depth)
+		draw_line(bdata.Src, exit_pos)
 		print()
 		return
 
