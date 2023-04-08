@@ -35,13 +35,14 @@ local function restrict(ply, weapon_class)
     ply:SelectWeapon(weapon_class)
     add_hook_til_prep("PlayerSwitchWeapon", ply:SteamID()..'_restricted', function(ply, oldwep, newwep)
         if newwep:GetClass() != weapon_class and newwep:GetClass() != "weapon_ttt_unarmed" then
-            timer.Simple(0.1, function() 
-                if ply:HasWeapon(weapon_class) then 
-                    ply:SelectWeapon(weapon_class)
-                else
-                    ply:SelectWeapon("weapon_ttt_unarmed")
-                end 
-            end)
+            newwep:Remove()
+            -- timer.Simple(0.1, function() 
+            --     if ply:HasWeapon(weapon_class) then 
+            --         ply:SelectWeapon(weapon_class)
+            --     else
+            --         ply:SelectWeapon("weapon_ttt_unarmed")
+            --     end 
+            -- end)
         end
     end)
 end
@@ -54,7 +55,7 @@ local function butter_fingers()
 
     timer_name = "butter_fingers_timer"
     remove_timer_on_prepare(timer_name)
-    timer.Create(timer_name, 5, 999, function()
+    timer.Create(timer_name, 10, 999, function()
 
         local ind = nil
         local done = false
@@ -74,7 +75,7 @@ local function butter_fingers()
 
     end)
 
-    SendColouredChat("Butter fingers!")
+    SendColouredChat("Butter fingers")
 
 end
 
@@ -128,7 +129,7 @@ local function fire_sale()
             RunConsoleCommand("ulx","credits",ply:Nick(),3)
         end
     end
-    SendColouredChat("Fire sale!")
+    SendColouredChat("Fire sale")
 end
 
 local function first_to_jump()
@@ -143,13 +144,13 @@ local function first_to_jump()
 
         if key == IN_JUMP then
             hook.Remove(hook_type, hook_name)
-            SendColouredChat(ply:Nick().." jumped first!")
+            SendColouredChat(ply:Nick().." jumped first")
             restrict(ply, "weapon_zm_improvised")
         end
 
     end)
 
-    SendColouredChat("JIUMP!")
+    SendColouredChat("JIUMP")
 
 end
 
@@ -163,7 +164,7 @@ local function high_grav()
         hook.Remove("TTTPrepareRound", "low_grav_prepare_round")
     end)
 
-    SendColouredChat("~The gang visits Jupiter~")
+    SendColouredChat("Super gravity")
 
 end
 
@@ -217,7 +218,7 @@ local function last_to_jump()
 
                     if who_jumped[iply:EntIndex()] == nil then
                         hook.Remove(hook_type, hook_name) 
-                        SendColouredChat(iply:Nick().." was the last to jump!")
+                        SendColouredChat(iply:Nick().." was the last to jump")
                         restrict(iply, "weapon_zm_improvised")
                     end
 
@@ -229,7 +230,7 @@ local function last_to_jump()
 
     end)
 
-    SendColouredChat("JUMP!")
+    SendColouredChat("JUMP")
     
 end
 
@@ -252,7 +253,7 @@ local function last_to_take_damage()
                 for i,iply in ipairs(player.GetAll()) do
                     if who_got_hurt[iply:EntIndex()] == nil then
                         hook.Remove(hook_type, hook_name)
-                        SendColouredChat(iply:Nick().." took damage last!")
+                        SendColouredChat(iply:Nick().." took damage last")
                         restrict(iply, "weapon_zm_improvised")
                     end
                 end
@@ -263,7 +264,7 @@ local function last_to_take_damage()
 
     end)
 
-    SendColouredChat("PURPLE HEART SPEEDRUN")
+    SendColouredChat("Last to take damage loses")
 
 end
 
@@ -277,7 +278,7 @@ local function low_grav()
         hook.Remove("TTTPrepareRound", "low_grav_prepare_round")
     end)
 
-    SendColouredChat("~The gang visits Pluto~")
+    SendColouredChat("Low gravity")
 
 end
 
@@ -320,8 +321,23 @@ local function slaps()
         end
     end)
 
-    SendColouredChat("\"Slap city bitch, slap slap city bitch.\"")
+    SendColouredChat("Slaps")
 
+end
+
+local function super_speed()
+    if CLIENT then return end
+    speed_boost = 1.75
+    for i,ply in ipairs(player.GetAll()) do
+        ply:SetWalkSpeed(ply:GetWalkSpeed() * speed_boost)
+    end
+    hook.Add("TTTPrepareRound","fix_speed_change", function()
+        for i,ply in ipairs(player.GetAll()) do
+            ply:SetWalkSpeed(ply:GetWalkSpeed() * 1/speed_boost)
+        end 
+        hook.Remove("TTTPrepareRound","fix_speed_change")
+    end)
+    SendColouredChat("Speed boost")
 end
 
 local function switcheroo()
@@ -380,17 +396,21 @@ local options = {
     low_grav, 
     shoot_boost, 
     slaps, 
-    switcheroo}
+    super_speed,
+    switcheroo
+}
 
 hook.Add("TTTBeginRound", "random_effects_begin_round", function()
     if CLIENT then return end
     pick1 = math.random(#options)
-    pick2 = pick1
-    while pick2 == pick1 do
-        pick2 = math.random(#options)
+    pick2 = math.random(#options)
+    if #options > 1 then
+        while pick2 == pick1         do
+            pick2 = math.random(#options)
+        end
     end
-    options[pick1]()
-    options[pick2]()
+    --options[pick1]()
+    --options[pick2]()
 end)
 --hook.Remove("TTTBeginRound", "random_effects_begin_round")
 
