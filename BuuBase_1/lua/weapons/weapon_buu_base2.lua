@@ -51,9 +51,9 @@ SWEP.Primary.Recoil      = 1.5
 SWEP.Primary.Damage      = 4
 SWEP.Primary.NumShots    = 1
 SWEP.Primary.Cone        = 0.001
-SWEP.Primary.Delay       = 0.33
+SWEP.Primary.Delay       = 0.3
 SWEP.Primary.TakeAmmo    = 1
-SWEP.Primary.ClipSize    = 10
+SWEP.Primary.ClipSize    = 100
 SWEP.Primary.DefaultClip = 500
 SWEP.Primary.Automatic   = true
 SWEP.Primary.Ammo        = "smg1"
@@ -131,7 +131,7 @@ SWEP.FireModeNames = {
 SWEP.Primary.Silenced         = false    -- Use a silenced muzzleflash?
 SWEP.Primary.SoundChannelSwap = false    -- Swap between CHAN_WEAPON and another channel during shooting (Helps some weapons sound better)
 SWEP.Primary.BurstFire        = false    -- Burst fire (Requires Automatic = false)
-SWEP.Primary.BurstCount       = 3        -- Number of burst shots
+SWEP.Primary.BurstCount       = 1        -- Number of burst shots
 SWEP.Primary.BurstTime        = 0.075    -- Time between burst shots
 SWEP.Primary.CancelBurst      = true     -- Allow canceling burstfire early
 SWEP.Primary.DelayLastShot    = -1       -- Delay value to use when firing the last shot. -1 to not use
@@ -179,7 +179,7 @@ SWEP.IronSightsShootAng = -1
 
 /*==================== Bullet Penetration ===================*/
 
-SWEP.CanPenetrate           = false
+SWEP.CanPenetrate           = true
 SWEP.PenetrateCount         = 3
 SWEP.PenetrateMax           = 32
 SWEP.PenetrateDamageFalloff = 0.5
@@ -1013,8 +1013,8 @@ function SWEP:BulletCallback(attacker, tr, dmginfo, pencount)
     trace        = util.TraceLine(trace) 
     
     -- Ensure the bullet penetrated
-    if (trace.StartSolid || trace.Fraction >= 1.0 || tr.Fraction <= 0.0) then return end
-        
+    if (/*trace.StartSolid || */trace.Fraction >= 1.0 || tr.Fraction <= 0.0) then return end
+
     -- Fire another bullet from the hit position
     local dmg = dmginfo:GetDamage()*self.PenetrateDamageFalloff
     local bullet = {}    
@@ -1022,14 +1022,14 @@ function SWEP:BulletCallback(attacker, tr, dmginfo, pencount)
     bullet.Src        = trace.HitPos
     bullet.Dir        = tr.Normal
     bullet.Spread     = Vector(0, 0, 0)
-    bullet.Tracer     = 1
+    bullet.Tracer     = 0
     bullet.Force      = 0.5*dmg
     bullet.TracerName = self:GetFireModeTable().Tracer
     bullet.Damage     = dmg
     bullet.Callback   = function(attacker, tr, dmginfo) self:BulletCallback(attacker, tr, dmginfo, pencount+1) end
-    attacker.FireBullets(attacker, bullet, true)
+    --attacker.FireBullets(attacker, bullet, true)
+    attacker:FireBullets(bullet, true)
 end
-
 
 /*-----------------------------
     ShootProjectile
