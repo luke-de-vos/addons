@@ -226,7 +226,7 @@ if SERVER then
     function SendColouredChat( text )
         net.Start( "SendColouredChat" )
             net.WriteTable( Color( 255, 255, 0, 255 ) )
-            net.WriteString( text )
+            net.WriteString(text )
         net.Broadcast()
     end
 end
@@ -238,4 +238,82 @@ if CLIENT then
         chat.AddText( color, str )
     end
     net.Receive( "SendColouredChat", ReceiveColouredChat )
+end
+
+
+
+
+-- line and ball debugging
+if SERVER then
+	util.AddNetworkString( "send_line_message" )
+	function draw_line(a, b)
+		net.Start( "send_line_message" )
+			net.WriteVector( a )
+			net.WriteVector( b )
+		net.Broadcast()
+	end
+    util.AddNetworkString( "send_sphere_message" )
+	function draw_sphere(pos)
+		net.Start( "send_sphere_message" )
+			net.WriteVector( pos)
+		net.Broadcast()
+	end
+end
+if CLIENT then
+	local my_color1 = Color(150, 0, 0)
+	local my_color2 = Color(0, 200, 0)
+	local a = nil
+	local b = nil
+	net.Receive( "send_line_message", function(len)
+		a = net.ReadVector()
+		b = net.ReadVector()
+	end )
+	hook.Add( "PostDrawTranslucentRenderables", "MySuper3DRenderingHook", function()
+		if a == nil then return end
+		render.DrawLine( a, b, my_color1, false )
+		render.DrawLine( a, b, my_color2, true )
+	end )
+
+	fmj_spheres = {}
+	net.Receive( "send_sphere_message", function(len)
+		table.insert(fmj_spheres, net.ReadVector())
+	end )
+	hook.Add( "PostDrawTranslucentRenderables", "draw_sphere_debug", function()
+		for i,vec in ipairs(fmj_spheres) do
+			render.DrawWireframeSphere(vec, 5, 20, 5, my_color1, false)
+			render.DrawWireframeSphere(vec, 5, 20, 5, my_color2, true)
+			render.DrawWireframeSphere(vec, 0.5, 20, 5, my_color1, false)
+			render.DrawWireframeSphere(vec, 0.5, 20, 5, my_color2, true)
+		end
+	end )
+end
+
+
+-- math helpers
+function get_euc_dist(vec1, vec2)
+    local dvec = vec2 - vec1
+    dvec.x = dvec.x^2
+    dvec.y = dvec.y^2
+    dvec.z = dvec.z^2
+    return math.sqrt(dvec.x + dvec.y + dvec.z)
+end
+
+function myDot(a, b)
+    return (a[1] * b[1]) + (a[2] * b[2]) + (a[3] * b[3])
+end
+
+function myMag(a)
+    return math.sqrt((a[1] * a[1]) + (a[2] * a[2]) + (a[3] * a[3]))
+end
+
+function get_angle(vec1, vec2)
+    return math.abs(math.deg(math.acos(myDot(vec1, vec2) / (myMag(vec1) * myMag(vec2)))) - 180)
+end
+
+
+local function see_table(t)
+    for x,y in pairs(t) do
+        print(x,y)
+    end
+    print()
 end
