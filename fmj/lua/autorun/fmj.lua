@@ -1,11 +1,20 @@
 -- fmj. bullet penetration
 if SERVER then print("Executed lua: " .. debug.getinfo(1,'S').source) end
 
+local p2d = {}
+p2d[HITGROUP_GENERIC] = 1
+p2d[HITGROUP_HEAD] = 4
+p2d[HITGROUP_CHEST] = 1
+p2d[HITGROUP_STOMACH] = 1
+p2d[HITGROUP_LEFTARM] = 1
+p2d[HITGROUP_RIGHTARM] = 1
+p2d[HITGROUP_LEFTLEG] = 0.54
+p2d[HITGROUP_RIGHTLEG] = 0.54
 
-local function my_trace(origin, dir, len, my_filter)
+local function my_trace(startpos, endpos, my_filter)
 	local tr = util.TraceLine({
-		start = origin,
-		endpos = origin + (dir*len),
+		start = startpos,
+		endpos = endpos,
 		filter = my_filter
 	})
 	return tr
@@ -13,7 +22,7 @@ end
 
 local function impact(tr)
 	if !IsFirstTimePredicted() then return end
-	if tr.Entity == NULL then return end
+	if tr.Entity == NULL or tr.HitSky then return end
 	local eff = EffectData()
 	eff:SetEntity(tr.Entity)
 	eff:SetOrigin(tr.HitPos)
@@ -28,6 +37,7 @@ end
 
 local function fmj_sparks(tr)
 	if !IsFirstTimePredicted() then return end
+	if tr.Entity == NULL or tr.HitSky then return end
 	local eff = EffectData()
 	eff:SetOrigin(tr.HitPos+tr.Normal*5)
 	eff:SetNormal(-tr.Normal)
@@ -58,8 +68,8 @@ local function bullet_hit(ent, tr, fmj_dir, bdata)
 		local dinfo = DamageInfo()
 		if ent:IsPlayer() then
 			ent:SetLastHitGroup(tr.HitGroup)
-		end
-		dinfo:SetDamage(bdata.Damage)
+		end		
+		dinfo:SetDamage(bdata.Damage * p2d[tr.HitGroup])
 		dinfo:SetAttacker(bdata.Attacker)
 		dinfo:SetInflictor(bdata.Attacker:GetActiveWeapon())
 		dinfo:SetDamageForce(fmj_dir*bdata.Force)
@@ -88,8 +98,8 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 	if bdata.Num > 1 then return end -- no shotguns
 
 	-- prep
-	local spreadx = (math.random(0, bdata.Spread.x*100)/100 - (bdata.Spread.x/2)) * 0.5
-	local spready = (math.random(0, bdata.Spread.y*100)/100 - (bdata.Spread.y/2)) * 0.5
+	local spreadx = (math.random(0, bdata.Spread.x*100)/100 - (bdata.Spread.x/2)) * 0.75
+	local spready = (math.random(0, bdata.Spread.y*100)/100 - (bdata.Spread.y/2)) * 0.75
 	local fmj_dir = bdata.Dir + Vector(spreadx, spreadx, 0)
 	local my_filter = nil
 	local this_depth = nil
@@ -105,33 +115,33 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 	local max_depth = math.min(bdata.Damage, 200)
 
 	-- first trace
-	local f_tr = my_trace(bdata.Src, fmj_dir, 10000, shooter)
+	local f_tr = my_trace(bdata.Src, bdata.Src+fmj_dir*10000, shooter)
 	if f_tr.Entity == NULL or f_tr.HitSky == true then 
 		print("\tExit","Initial trace exited map") 
 		return 
 	end	
 	local b_tr = nil
 
-	timer.Simple(4, function()
+	--timer.Simple(4, function()
 
 		while true do
 
-			-- ADD CHECKS FOR NULL HIT ENT
+			-- are null ents, entries and exits handled correctly?
 
 			now_piercing = f_tr.Entity
 			print("\tNow piercing", f_tr.Entity)
 			start_pos = f_tr.HitPos
 			if not f_tr.HitWorld then
-				-- trace through prop and back to get depth
-				f_tr = my_trace(start_pos, fmj_dir, 10000, f_tr.Entity)
-				b_tr = my_trace(f_tr.HitPos - fmj_dir, -fmj_dir, 10000, nil)
+				-- for props, ragdolls, and players, filtered trace through then unfiltered back to get depth
+				f_tr = my_trace(start_pos, start_pos+fmj_dir*10000, f_tr.Entity)
+				b_tr = my_trace(f_tr.HitPos-fmj_dir, start_pos, nil)
 				-- depth
 				this_depth = get_euc_dist(f_tr.StartPos, b_tr.HitPos)
 			else
-				-- step through world solid, trace forward and back to get depth
+				-- step through world solid, trace forward and back to set up effects
 				final_pos, this_depth = get_next_empty_pos(start_pos, fmj_dir, max_depth+1, util.PointContents(bdata.Src))
-				f_tr = my_trace(final_pos, fmj_dir, 10000, f_tr.Entity)
-				b_tr = my_trace(final_pos + fmj_dir, -fmj_dir, 100, nil)
+				f_tr = my_trace(final_pos, final_pos+fmj_dir*10000, f_tr.Entity)
+				b_tr = my_trace(final_pos+fmj_dir, final_pos-fmj_dir*100, nil)
 			end
 
 			if this_depth + pierced_depth > max_depth then 
@@ -145,7 +155,11 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 			impact(b_tr)
 			fmj_sparks(b_tr)
 
-			-- entry effects and damage, force
+			if f_tr.Entity == NULL or f_tr.HitSky then
+				print("\tExit", "Bullet exited") 
+			end
+
+			-- entry effects and damage, 
 			impact(f_tr)
 			bullet_hit(f_tr.Entity, f_tr, fmj_dir, bdata)
 
@@ -163,7 +177,7 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 		print()
 		return
 
-	end)
+	--end)
 	
 end)
 
