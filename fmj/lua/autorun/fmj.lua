@@ -29,10 +29,10 @@ local function do_tracer(entity, tr)
 end
 
 
-local function fmj_sparks(tr)
+local function fmj_sparks(origin, normal)
 	local eff = EffectData()
-	eff:SetOrigin(tr.StartPos)
-	eff:SetNormal(-tr.Normal)
+	eff:SetOrigin(origin)
+	eff:SetNormal(normal)
 	util.Effect("MetalSpark", eff)
 end
 
@@ -74,17 +74,25 @@ local function bullet_entry(tr, fmj_dir, bdata)
 end
 
 
-local function bullet_exit(exit_pos, fmj_dir)
+local function bullet_exit(tr, fmj_dir)
 
 	-- fmj reverse trace for exit decal
 	local tr_reverse = util.TraceLine({
-		start = exit_pos,
-		endpos = exit_pos + (-fmj_dir*10)
+		start = tr.HitPos,
+		endpos = tr.StartPos
 	})
 
 	impact(tr_reverse)
-	fmj_sparks(tr_reverse)
+	fmj_sparks(tr_reverse.HitPos, -tr_reverse.Normal)
 
+end
+
+local function should_end_tracing(tr)
+	if tr.HitSky == true
+	or tr.Entity == NULL then
+		return true
+	else
+		return false
 end
 
 
@@ -117,7 +125,7 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 
 	print()
 
-	--timer.Simple(4, function()
+	timer.Simple(2, function()
 
 		--fmj_spheres = {}
 
@@ -135,23 +143,15 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 					endpos = exit_pos + (fmj_dir*10000),
 					filter = filter
 				})
+				bullet_exit(tr, fmj_dir)
 			end
+					
+			--draw_sphere(tr.StartPos) -- exit_pos becomes next tr.StartPos
+			--draw_sphere(tr.HitPos)
 
-				-- tracer
-			do_tracer(shooter:GetActiveWeapon(), tr)
-		
-			draw_sphere(tr.StartPos) -- exit_pos becomes next tr.StartPos
-			draw_sphere(tr.HitPos)
-
-			if tr.HitSky then 
-				print("\tExit", "hit sky") 
-				exit_pos = tr.HitPos
-				break 
-			end
-			if tr.Entity == NULL then
-				print("\tExit", "hit NULL") 
-				exit_pos = tr.HitPos
-				break 
+			if should_end_tracing(tr) then
+				print("\t", "Trace hit sky or NULL ent")
+				break
 			end
 
 			-- damage, force, sounds, effects
@@ -162,7 +162,7 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 			exit_pos, this_depth = get_next_empty_pos(tr.HitPos, fmj_dir, max_depth-pierced_depth, util.PointContents(bdata.Src))
 			if pierced_depth + this_depth > max_depth then 
 				print("\tExit", "Depth limit") 
-				draw_sphere(exit_pos)
+				--draw_sphere(exit_pos)
 				break 
 			end
 			pierced_depth = pierced_depth + this_depth
@@ -171,8 +171,6 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 
 			print("\tPenetrated ", tr.Entity, this_depth)
 
-			bullet_exit(exit_pos, fmj_dir)
-
 			traceno = traceno + 1
 			if traceno > max_traces then 
 				print("\tExit", "Trace limit", max_traces) 
@@ -180,22 +178,20 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 			end
 
 			-- prepare next nonsolid trace
-			if tr.Entity:IsPlayer() or tr.Entity:GetClass() == "prop_ragdoll" then
+			if tr.Entity:IsPlayer() 
+			or tr.Entity:GetClass() == "prop_ragdoll" 
+			or tr.Entity:GetClass() == "prop_physics"
+			or tr.Entity:GetClass() == "prop_dynamic" then
 				filter = tr.Entity 
-			elseif tr.Entity:GetClass() == "prop_physics" then
-				filter = tr.Entity 
-			elseif tr.Entity:GetClass() == "prop_dynamic" then
-				filter = tr.Entity
 			end
-
 		end
 
 		print("\tPierced depth: ", pierced_depth, max_depth)
-		draw_line(bdata.Src, exit_pos)
+		--draw_line(bdata.Src, exit_pos)
 		print()
 		return
 
-	--end)
+	end)
 
 
 	
