@@ -376,7 +376,7 @@ local function switcheroo()
 
     end)
 
-    SendColouredChat("SWITCHEROO")
+    SendColouredChat("SWITCH")
 
 end
 
@@ -387,12 +387,12 @@ local options = {
     crowbar_zombies,
     fade_to_black,
     fire_sale,
-    first_to_jump, 
+    --first_to_jump, 
     high_grav,
     huges,
     invert_damage, 
-    last_to_jump, 
-    last_to_take_damage, 
+    --last_to_jump, 
+    --last_to_take_damage, 
     low_grav, 
     shoot_boost, 
     slaps, 
@@ -409,9 +409,9 @@ hook.Add("TTTBeginRound", "random_effects_begin_round", function()
             pick2 = math.random(#options)
         end
     end
-    --options[pick1]()
-    --options[pick2]()
+    options[pick1]()
+    options[pick2]()
 end)
---hook.Remove("TTTBeginRound", "random_effects_begin_round")
+hook.Remove("TTTBeginRound", "random_effects_begin_round")
 
 

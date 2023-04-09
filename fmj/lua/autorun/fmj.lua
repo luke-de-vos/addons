@@ -3,7 +3,7 @@ if SERVER then print("Executed lua: " .. debug.getinfo(1,'S').source) end
 
 local p2d = {}
 p2d[HITGROUP_GENERIC] = 1
-p2d[HITGROUP_HEAD] = 4
+p2d[HITGROUP_HEAD] = 3
 p2d[HITGROUP_CHEST] = 1
 p2d[HITGROUP_STOMACH] = 1
 p2d[HITGROUP_LEFTARM] = 1
@@ -62,7 +62,7 @@ local function get_next_empty_pos(origin, dir, max_depth, contents_src)
 end
 
 
-local function bullet_hit(ent, tr, fmj_dir, bdata) 
+local function bullet_hit(ent, tr, fmj_dir, bdata, depth_penalty) 
 	-- apply damage
 	if IsValid(ent) /*and ent:GetClass() != "prop_physics"*/ then -- note: world entity is not valid
 		local dinfo = DamageInfo()
@@ -79,10 +79,19 @@ local function bullet_hit(ent, tr, fmj_dir, bdata)
 		dinfo:SetReportedPosition(tr.HitPos)
 		ent:TakeDamageInfo(dinfo)
 	end
-	-- apply force to physics objects
-	if IsValid(ent) and IsValid(ent:GetPhysicsObject()) then
-		ent:GetPhysicsObject():SetVelocity(bdata.Force*fmj_dir*10)
+	-- apply force to physics objects and log
+	if IsValid(ent) then
+		if IsValid(ent:GetPhysicsObject()) then
+			ent:GetPhysicsObject():SetVelocity(bdata.Force*fmj_dir*10)
+		elseif ent:IsRagdoll() then
+			ent:SetVelocity(bdata.Force*fmj_dir*100)
+		--log
+		elseif ent:IsPlayer() then
+			print("\t"..bdata.Attacker:Nick().." ("..bdata.Damage * p2d[tr.HitGroup].." FMJ damage) "..ent:Nick())
+		end
 	end
+	
+	
 end
 
 
@@ -109,10 +118,11 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 	local traceno = 1
 	local max_traces = 10
 	local pierced_depth = 0
-	local max_depth = math.min(bdata.Damage, 200)
+	local max_depth = 48
+	local bullet_range = math.min(bdata.Distance, 10000)
 
 	-- first trace
-	local f_tr = my_trace(bdata.Src, bdata.Src+fmj_dir*10000, shooter)
+	local f_tr = my_trace(bdata.Src, bdata.Src+fmj_dir*bullet_range, shooter)
 	if f_tr.Entity == NULL or f_tr.HitSky == true then 
 		print("\tExit","Initial trace exited map") 
 		return 
@@ -128,14 +138,14 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 			start_pos = f_tr.HitPos
 			if not f_tr.HitWorld then
 				-- for props, ragdolls, and players, filtered trace through then unfiltered trace back to get depth
-				f_tr = my_trace(start_pos, start_pos+fmj_dir*10000, f_tr.Entity)
+				f_tr = my_trace(start_pos, start_pos+fmj_dir*bullet_range, f_tr.Entity)
 				b_tr = my_trace(f_tr.HitPos-fmj_dir, start_pos, nil)
 				-- depth
 				this_depth = get_euc_dist(f_tr.StartPos, b_tr.HitPos)
 			else
 				-- step through world solid, trace forward and back to set up effects
 				final_pos, this_depth = get_next_empty_pos(start_pos, fmj_dir, max_depth-pierced_depth+1, util.PointContents(bdata.Src))
-				f_tr = my_trace(final_pos, final_pos+fmj_dir*10000, /*f_tr.Entity*/)
+				f_tr = my_trace(final_pos, final_pos+fmj_dir*bullet_range/*, f_tr.Entity*/)
 				b_tr = my_trace(final_pos+fmj_dir, final_pos-fmj_dir*100, nil)
 			end
 
@@ -159,7 +169,7 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 
 			-- entry effects and damage, 
 			impact(f_tr)
-			bullet_hit(f_tr.Entity, f_tr, fmj_dir, bdata)
+			bullet_hit(f_tr.Entity, f_tr, fmj_dir, bdata, max_depth/pierced_depth)
 
 			-- count traces
 			traceno = traceno + 1
