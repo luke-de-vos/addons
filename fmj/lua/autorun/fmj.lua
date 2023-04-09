@@ -101,6 +101,18 @@ local hook_name = hook_type.."fmj"
 
 hook.Add(hook_type, hook_name, function( shooter, bdata )
 
+	/*
+	new approach:
+		get intitial trace
+		if tr1.Entity ok
+			tr2 = trace tr1.hitpos to tr1.hitpos+fmj_dir*10000, filtering tr1.Entity
+			tr2back = trace tr2.hitpos to tr2.StartPos
+			local exit_pos = tr2back.HitPos
+			local exit_normal = -tr2back.Normal
+
+
+	*/
+
 	-- clear spheres
 	if CLIENT then fmj_spheres = {} return end
 	
