@@ -46,7 +46,7 @@ end
 
 
 local function get_next_empty_pos(origin, dir, max_depth, contents_src)
-	-- contents_src: PointContents at bullet's source pos. treat that value as empty space
+	-- contents_src: util.PointContents at bullet's source pos. treat that value as empty space
 	local depth = 0
 	local next_pos = origin
 	while true do
@@ -105,7 +105,6 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 	local this_depth = nil
 	local final_pos = nil
 	local now_piercing = nil
-
 	local start_pos = nil
 
 	-- measurement
@@ -137,7 +136,7 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 				this_depth = get_euc_dist(f_tr.StartPos, b_tr.HitPos)
 			else
 				-- step through world solid, trace forward and back to set up effects
-				final_pos, this_depth = get_next_empty_pos(start_pos, fmj_dir, max_depth+1, util.PointContents(bdata.Src))
+				final_pos, this_depth = get_next_empty_pos(start_pos, fmj_dir, max_depth-pierced_depth+1, util.PointContents(bdata.Src))
 				f_tr = my_trace(final_pos, final_pos+fmj_dir*10000, f_tr.Entity)
 				b_tr = my_trace(final_pos+fmj_dir, final_pos-fmj_dir*100, nil)
 			end
