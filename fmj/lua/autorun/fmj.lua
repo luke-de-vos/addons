@@ -2,6 +2,15 @@
 if SERVER then print("Executed lua: " .. debug.getinfo(1,'S').source) end
 
 
+local function my_trace(origin, dir, len, my_filter)
+	local tr = util.TraceLine({
+		start = origin,
+		endpos = origin + (dir*len),
+		filter = my_filter
+	})
+	return tr
+end
+
 local function impact(tr)
 	if !IsFirstTimePredicted() then return end
 	if tr.Entity == NULL then return end
@@ -16,24 +25,13 @@ local function impact(tr)
 	util.Effect("Impact", eff, true, true)
 end
 
-local function do_tracer(entity, tr)
-	--if !IsFirstTimePredicted() then return end
-	--if tr.Entity == NULL then return end
-	local eff = EffectData()
-	eff:SetEntity(entity)
-	eff:SetAngles(tr.Normal:Angle())
-	eff:SetOrigin(tr.StartPos)
-	eff:SetStart(tr.StartPos)
-	--eff:SetHitBox(tr.HitBox)
-	util.Effect("Tracer", eff, true, true)
-end
 
-
-local function fmj_sparks(origin, normal)
+local function fmj_sparks(tr)
+	if !IsFirstTimePredicted() then return end
 	local eff = EffectData()
-	eff:SetOrigin(origin)
-	eff:SetNormal(normal)
-	util.Effect("MetalSpark", eff)
+	eff:SetOrigin(tr.HitPos+tr.Normal*5)
+	eff:SetNormal(-tr.Normal)
+	util.Effect("MetalSpark", eff, true, true)
 end
 
 
@@ -44,9 +42,9 @@ local function get_next_empty_pos(origin, dir, max_depth, contents_src)
 	while true do
 		next_pos = next_pos + dir -- the +dir is very important
 		depth = depth + 1
-		print("\t"..util.PointContents(next_pos), contents_src)
-		if util.PointContents(next_pos) == CONTENTS_EMPTY 
-		or util.PointContents(next_pos) == contents_src 
+		local next_contents = util.PointContents(next_pos)
+		if next_contents == CONTENTS_EMPTY 
+		or next_contents == contents_src 
 		or depth > max_depth then
 			return next_pos, depth
 		end
@@ -54,45 +52,27 @@ local function get_next_empty_pos(origin, dir, max_depth, contents_src)
 end
 
 
-local function bullet_entry(tr, fmj_dir, bdata) 
-	-- effect
-	impact(tr)
+local function bullet_hit(ent, tr, fmj_dir, bdata) 
 	-- apply damage
-	if IsValid(tr.Entity) /*and tr.Entity:GetClass() != "prop_physics"*/ then -- world entity is not valid
-		tr.Entity:TakeDamage(bdata.Damage/2, bdata.Attacker, bdata.Attacker:GetActiveWeapon())
-	end
-	-- if body, do blood. else, do force
-	if tr.Entity:IsPlayer() /*or tr.Entity:GetClass() == "prop_ragdoll"*/ then
-		local eff = EffectData()
-		eff:SetOrigin(tr.HitPos)
-		util.Effect("BloodImpact", eff)
-	else 
-		if IsValid(tr.Entity) and IsValid(tr.Entity:GetPhysicsObject()) then
-			tr.Entity:GetPhysicsObject():SetVelocity(fmj_dir*bdata.Force*30)
+	if IsValid(ent) /*and ent:GetClass() != "prop_physics"*/ then -- note: world entity is not valid
+		local dinfo = DamageInfo()
+		if ent:IsPlayer() then
+			ent:SetLastHitGroup(tr.HitGroup)
 		end
+		dinfo:SetDamage(bdata.Damage)
+		dinfo:SetAttacker(bdata.Attacker)
+		dinfo:SetInflictor(bdata.Attacker:GetActiveWeapon())
+		dinfo:SetDamageForce(fmj_dir*bdata.Force)
+		dinfo:SetDamagePosition(tr.HitPos)
+		dinfo:SetDamageType(DMG_BULLET)
+		dinfo:SetAmmoType(game.GetAmmoID(bdata.AmmoType))
+		dinfo:SetReportedPosition(tr.HitPos)
+		ent:TakeDamageInfo(dinfo)
 	end
-end
-
-
-local function bullet_exit(tr, fmj_dir)
-
-	-- fmj reverse trace for exit decal
-	local tr_reverse = util.TraceLine({
-		start = tr.HitPos,
-		endpos = tr.StartPos
-	})
-
-	impact(tr_reverse)
-	fmj_sparks(tr_reverse.HitPos, -tr_reverse.Normal)
-
-end
-
-local function should_end_tracing(tr)
-	if tr.HitSky == true
-	or tr.Entity == NULL then
-		return true
-	else
-		return false
+	-- apply force to physics objects
+	if IsValid(ent) and IsValid(ent:GetPhysicsObject()) then
+		ent:GetPhysicsObject():SetVelocity(bdata.Force*fmj_dir*10)
+	end
 end
 
 
@@ -101,33 +81,22 @@ local hook_name = hook_type.."fmj"
 
 hook.Add(hook_type, hook_name, function( shooter, bdata )
 
-	/*
-	new approach:
-		get intitial trace
-		if tr1.Entity ok
-			tr2 = trace tr1.hitpos to tr1.hitpos+fmj_dir*10000, filtering tr1.Entity
-			tr2back = trace tr2.hitpos to tr2.StartPos
-			local exit_pos = tr2back.HitPos
-			local exit_normal = -tr2back.Normal
+	if CLIENT then return end
 
-
-	*/
-
-	-- clear spheres
-	if CLIENT then fmj_spheres = {} return end
+	print()
 	
-	-- no shotguns
-	if bdata.Num > 1 then return end
+	if bdata.Num > 1 then return end -- no shotguns
 
 	-- prep
 	local spreadx = (math.random(0, bdata.Spread.x*100)/100 - (bdata.Spread.x/2)) * 0.5
 	local spready = (math.random(0, bdata.Spread.y*100)/100 - (bdata.Spread.y/2)) * 0.5
 	local fmj_dir = bdata.Dir + Vector(spreadx, spreadx, 0)
-	local start = nil
-	local filter = nil
+	local my_filter = nil
 	local this_depth = nil
-	local exit_pos = nil
-	local tr = nil
+	local final_pos = nil
+	local now_piercing = nil
+
+	local start_pos = nil
 
 	-- measurement
 	local traceno = 1
@@ -135,77 +104,66 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 	local pierced_depth = 0
 	local max_depth = math.min(bdata.Damage, 200)
 
-	print()
+	-- first trace
+	local f_tr = my_trace(bdata.Src, fmj_dir, 10000, shooter)
+	if f_tr.Entity == NULL or f_tr.HitSky == true then 
+		print("\tExit","Initial trace exited map") 
+		return 
+	end	
+	local b_tr = nil
 
-	timer.Simple(2, function()
-
-		--fmj_spheres = {}
+	timer.Simple(4, function()
 
 		while true do
 
-			if traceno == 1 then
-				tr = util.TraceLine({
-					start = bdata.Src,
-					endpos = bdata.Src + (fmj_dir*10000),
-					filter = shooter
-				})
+			-- ADD CHECKS FOR NULL HIT ENT
+
+			now_piercing = f_tr.Entity
+			print("\tNow piercing", f_tr.Entity)
+			start_pos = f_tr.HitPos
+			if not f_tr.HitWorld then
+				-- trace through prop and back to get depth
+				f_tr = my_trace(start_pos, fmj_dir, 10000, f_tr.Entity)
+				b_tr = my_trace(f_tr.HitPos - fmj_dir, -fmj_dir, 10000, nil)
+				-- depth
+				this_depth = get_euc_dist(f_tr.StartPos, b_tr.HitPos)
 			else
-				tr = util.TraceLine({
-					start = exit_pos,
-					endpos = exit_pos + (fmj_dir*10000),
-					filter = filter
-				})
-				bullet_exit(tr, fmj_dir)
-			end
-					
-			--draw_sphere(tr.StartPos) -- exit_pos becomes next tr.StartPos
-			--draw_sphere(tr.HitPos)
-
-			if should_end_tracing(tr) then
-				print("\t", "Trace hit sky or NULL ent")
-				break
+				-- step through world solid, trace forward and back to get depth
+				final_pos, this_depth = get_next_empty_pos(start_pos, fmj_dir, max_depth+1, util.PointContents(bdata.Src))
+				f_tr = my_trace(final_pos, fmj_dir, 10000, f_tr.Entity)
+				b_tr = my_trace(final_pos + fmj_dir, -fmj_dir, 100, nil)
 			end
 
-			-- damage, force, sounds, effects
-			if traceno > 1 then
-				bullet_entry(tr, fmj_dir, bdata)
-			end
-
-			exit_pos, this_depth = get_next_empty_pos(tr.HitPos, fmj_dir, max_depth-pierced_depth, util.PointContents(bdata.Src))
-			if pierced_depth + this_depth > max_depth then 
+			if this_depth + pierced_depth > max_depth then 
 				print("\tExit", "Depth limit") 
-				--draw_sphere(exit_pos)
 				break 
 			end
 			pierced_depth = pierced_depth + this_depth
+			print("\tPenetrated ", now_piercing, this_depth)
 
-			--if get_angle(tr.Normal, tr.HitNormal) > 60 then return end
+			-- exit effects
+			impact(b_tr)
+			fmj_sparks(b_tr)
 
-			print("\tPenetrated ", tr.Entity, this_depth)
+			-- entry effects and damage, force
+			impact(f_tr)
+			bullet_hit(f_tr.Entity, f_tr, fmj_dir, bdata)
 
+			-- count traces
 			traceno = traceno + 1
 			if traceno > max_traces then 
 				print("\tExit", "Trace limit", max_traces) 
 				break 
 			end
 
-			-- prepare next nonsolid trace
-			if tr.Entity:IsPlayer() 
-			or tr.Entity:GetClass() == "prop_ragdoll" 
-			or tr.Entity:GetClass() == "prop_physics"
-			or tr.Entity:GetClass() == "prop_dynamic" then
-				filter = tr.Entity 
-			end
 		end
 
 		print("\tPierced depth: ", pierced_depth, max_depth)
-		--draw_line(bdata.Src, exit_pos)
+		--draw_line(bdata.Src, final_pos)
 		print()
 		return
 
 	end)
-
-
 	
 end)
 
