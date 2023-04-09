@@ -88,7 +88,6 @@ end
 
 local hook_type = "EntityFireBullets"
 local hook_name = hook_type.."fmj"
-
 hook.Add(hook_type, hook_name, function( shooter, bdata )
 
 	if CLIENT then return end
@@ -98,9 +97,8 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 	if bdata.Num > 1 then return end -- no shotguns
 
 	-- prep
-	local spreadx = (math.random(0, bdata.Spread.x*100)/100 - (bdata.Spread.x/2)) * 0.75
-	local spready = (math.random(0, bdata.Spread.y*100)/100 - (bdata.Spread.y/2)) * 0.75
-	local fmj_dir = bdata.Dir + Vector(spreadx, spreadx, 0)
+	local spread = (math.random(0, bdata.Spread.x*100)/100 - (bdata.Spread.x/2)) * 0.75
+	local fmj_dir = bdata.Dir + Vector(spread, spread, 0)
 	local my_filter = nil
 	local this_depth = nil
 	local final_pos = nil
@@ -137,7 +135,7 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 			else
 				-- step through world solid, trace forward and back to set up effects
 				final_pos, this_depth = get_next_empty_pos(start_pos, fmj_dir, max_depth-pierced_depth+1, util.PointContents(bdata.Src))
-				f_tr = my_trace(final_pos, final_pos+fmj_dir*10000, f_tr.Entity)
+				f_tr = my_trace(final_pos, final_pos+fmj_dir*10000, /*f_tr.Entity*/)
 				b_tr = my_trace(final_pos+fmj_dir, final_pos-fmj_dir*100, nil)
 			end
 
