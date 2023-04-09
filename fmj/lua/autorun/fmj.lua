@@ -126,13 +126,11 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 
 		while true do
 
-			-- are null ents, entries and exits handled correctly?
-
 			now_piercing = f_tr.Entity
 			print("\tNow piercing", f_tr.Entity)
 			start_pos = f_tr.HitPos
 			if not f_tr.HitWorld then
-				-- for props, ragdolls, and players, filtered trace through then unfiltered back to get depth
+				-- for props, ragdolls, and players, filtered trace through then unfiltered trace back to get depth
 				f_tr = my_trace(start_pos, start_pos+fmj_dir*10000, f_tr.Entity)
 				b_tr = my_trace(f_tr.HitPos-fmj_dir, start_pos, nil)
 				-- depth
@@ -144,6 +142,7 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 				b_tr = my_trace(final_pos+fmj_dir, final_pos-fmj_dir*100, nil)
 			end
 
+			-- check depth limit
 			if this_depth + pierced_depth > max_depth then 
 				print("\tExit", "Depth limit") 
 				break 
@@ -155,8 +154,10 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 			impact(b_tr)
 			fmj_sparks(b_tr)
 
+			-- exit?
 			if f_tr.Entity == NULL or f_tr.HitSky then
-				print("\tExit", "Bullet exited") 
+				print("\tExit", "f_tr exited world") 
+				break
 			end
 
 			-- entry effects and damage, 
