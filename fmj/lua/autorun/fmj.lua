@@ -1,6 +1,9 @@
 -- fmj. bullet penetration
 if SERVER then print("Executed lua: " .. debug.getinfo(1,'S').source) end
 
+local log_debug = false
+local line_debug = true
+
 local p2d = {}
 p2d[HITGROUP_GENERIC] = 1
 p2d[HITGROUP_HEAD] = 3
@@ -10,6 +13,47 @@ p2d[HITGROUP_LEFTARM] = 1
 p2d[HITGROUP_RIGHTARM] = 1
 p2d[HITGROUP_LEFTLEG] = 0.54
 p2d[HITGROUP_RIGHTLEG] = 0.54
+
+-- visualize last bullet's path and penetrations
+if SERVER then
+    util.AddNetworkString("fmj_trace_message")
+end
+
+local function send_points_se(vec_table)
+	if SERVER then
+		net.Start("fmj_trace_message")
+			for i,vec in ipairs(vec_table) do
+				net.WriteVector(vec)
+			end
+		net.Broadcast()
+	end
+end
+
+if CLIENT then
+	local my_color1 = Color(150, 0, 0)
+	local my_color2 = Color(0, 200, 0)
+	local cl_points = {}
+	local this_vec = nil
+	net.Receive("fmj_trace_message", function(len)
+		cl_points = {}
+		while true do
+			this_vec = net.ReadVector()
+			if this_vec == Vector(0,0,0) then break end
+			table.insert(cl_points, this_vec)
+		end
+	end)
+	hook.Add("PostDrawTranslucentRenderables", "PostDraw_bullet_trace", function()
+		if #cl_points < 2 then return end
+		render.DrawLine(cl_points[1], cl_points[#cl_points], my_color1, false)
+		render.DrawLine(cl_points[1], cl_points[#cl_points], my_color2, true)
+		for i,vec in ipairs(cl_points) do
+			--render.DrawWireframeSphere(vec, 5, 20, 5, my_color1, false)
+			--render.DrawWireframeSphere(vec, 5, 20, 5, my_color2, true)
+			render.DrawWireframeSphere(vec, 1, 20, 5, my_color1, false)
+			render.DrawWireframeSphere(vec, 1, 20, 5, my_color2, true)
+		end
+	end)
+end
 
 local function my_trace(startpos, endpos, my_filter)
 	local tr = util.TraceLine({
@@ -39,18 +83,18 @@ local function fmj_sparks(tr)
 	if !IsFirstTimePredicted() then return end
 	if tr.Entity == NULL or tr.HitSky then return end
 	local eff = EffectData()
-	eff:SetOrigin(tr.HitPos+tr.Normal*5)
+	eff:SetOrigin(tr.HitPos+tr.Normal*5) -- sparks originate slightly inside of surface; looks better
 	eff:SetNormal(-tr.Normal)
 	util.Effect("MetalSpark", eff, true, true)
 end
 
 
-local function get_next_empty_pos(origin, dir, max_depth, contents_src)
+local function penetrate_world_solid(origin, dir, max_depth, contents_src)
 	-- contents_src: util.PointContents at bullet's source pos. treat that value as empty space
 	local depth = 0
 	local next_pos = origin
 	while true do
-		next_pos = next_pos + dir -- the +dir is very important
+		next_pos = next_pos + dir
 		depth = depth + 1
 		local next_contents = util.PointContents(next_pos)
 		if next_contents == CONTENTS_EMPTY 
@@ -62,32 +106,34 @@ local function get_next_empty_pos(origin, dir, max_depth, contents_src)
 end
 
 
-local function bullet_hit(ent, tr, fmj_dir, bdata, depth_penalty) 
+local function bullet_hit(ent, tr, bdata, percent_pierced) 
+	
 	-- apply damage
 	if IsValid(ent) /*and ent:GetClass() != "prop_physics"*/ then -- note: world entity is not valid
+		local dmg_amt = math.ceil((1-percent_pierced) * bdata.Damage * p2d[tr.HitGroup])
 		local dinfo = DamageInfo()
 		if ent:IsPlayer() then
 			ent:SetLastHitGroup(tr.HitGroup)
 		end		
-		dinfo:SetDamage(bdata.Damage * p2d[tr.HitGroup])
+		dinfo:SetDamage(dmg_amt)
 		dinfo:SetAttacker(bdata.Attacker)
 		dinfo:SetInflictor(bdata.Attacker:GetActiveWeapon())
-		dinfo:SetDamageForce(fmj_dir*bdata.Force)
+		dinfo:SetDamageForce(tr.Normal*bdata.Force)
 		dinfo:SetDamagePosition(tr.HitPos)
 		dinfo:SetDamageType(DMG_BULLET)
 		dinfo:SetAmmoType(game.GetAmmoID(bdata.AmmoType))
 		dinfo:SetReportedPosition(tr.HitPos)
 		ent:TakeDamageInfo(dinfo)
-	end
-	-- apply force to physics objects and log
-	if IsValid(ent) then
+		if ent:IsPlayer() then
+			if log_debug then print("\tPen damage", ent, dmg_amt) end
+		end
+		-- apply force to physics objects and log
 		if IsValid(ent:GetPhysicsObject()) then
-			ent:GetPhysicsObject():SetVelocity(bdata.Force*fmj_dir*10)
-		elseif ent:IsRagdoll() then
-			ent:SetVelocity(bdata.Force*fmj_dir*100)
-		--log
-		elseif ent:IsPlayer() then
-			print("\t"..bdata.Attacker:Nick().." ("..bdata.Damage * p2d[tr.HitGroup].." FMJ damage) "..ent:Nick())
+			if ent:IsRagdoll() then
+				ent:GetPhysicsObject():SetVelocity(bdata.Force * (tr.Normal+Vector(0,0,0.5)) * 150)
+			else
+				ent:GetPhysicsObject():SetVelocity(bdata.Force * tr.Normal * 20)
+			end
 		end
 	end
 	
@@ -95,98 +141,101 @@ local function bullet_hit(ent, tr, fmj_dir, bdata, depth_penalty)
 end
 
 
+local MAX_TRACES = 10
+local MAX_DEPTH = 48
+
 local hook_type = "EntityFireBullets"
-local hook_name = hook_type.."fmj"
+local hook_name = hook_type.."_dougie_fmj_2"
 hook.Add(hook_type, hook_name, function( shooter, bdata )
 
 	if CLIENT then return end
 
-	print()
-	
 	if bdata.Num > 1 then return end -- no shotguns
 
+	if log_debug then print() end
+
+	bdata.Callback = function(att, tr, dmg_info)
+		fmj_callback(att, tr, dmg_info, bdata)
+	end
+
+	return true -- return true to apply bdata updates to bullet
+
+end)
+--hook.Remove(hook_type, hook_name)
+
+
+function fmj_callback(shooter, f_tr, dmg_info, bdata)
+
+	if f_tr.HitSky or f_tr.Entity == NULL then return end
+
 	-- prep
-	local spread = (math.random(0, bdata.Spread.x*100)/100 - (bdata.Spread.x/2)) * 0.75
-	local fmj_dir = bdata.Dir + Vector(spread, spread, 0)
+	local now_piercing = nil
 	local my_filter = nil
 	local this_depth = nil
-	local final_pos = nil
-	local now_piercing = nil
 	local start_pos = nil
+	local final_pos = nil
 
-	-- measurement
-	local traceno = 1
-	local max_traces = 10
+	local points_se = {}
 	local pierced_depth = 0
-	local max_depth = 48
+	local traceno = 0
 	local bullet_range = math.min(bdata.Distance, 10000)
 
-	-- first trace
-	local f_tr = my_trace(bdata.Src, bdata.Src+fmj_dir*bullet_range, shooter)
-	if f_tr.Entity == NULL or f_tr.HitSky == true then 
-		print("\tExit","Initial trace exited map") 
-		return 
-	end	
-	local b_tr = nil
+	local fmj_dir = f_tr.Normal
 
-	--timer.Simple(4, function()
+	while true do
 
-		while true do
+			start_pos = f_tr.HitPos
+			if line_debug then table.insert(points_se, start_pos) end
 
 			now_piercing = f_tr.Entity
-			print("\tNow piercing", f_tr.Entity)
-			start_pos = f_tr.HitPos
+			if log_debug then print("\tPenetrating", now_piercing) end
+			
 			if not f_tr.HitWorld then
-				-- for props, ragdolls, and players, filtered trace through then unfiltered trace back to get depth
+				-- for non-world solids, run a filtered trace through ent then an unfiltered trace back to get depth
 				f_tr = my_trace(start_pos, start_pos+fmj_dir*bullet_range, f_tr.Entity)
 				b_tr = my_trace(f_tr.HitPos-fmj_dir, start_pos, nil)
-				-- depth
-				this_depth = get_euc_dist(f_tr.StartPos, b_tr.HitPos)
+				final_pos = b_tr.HitPos
+				this_depth = f_tr.StartPos:Distance(final_pos)
 			else
-				-- step through world solid, trace forward and back to set up effects
-				final_pos, this_depth = get_next_empty_pos(start_pos, fmj_dir, max_depth-pierced_depth+1, util.PointContents(bdata.Src))
+				-- for world solids, step through world solid, then trace forward and back to set up effects
+				final_pos, this_depth = penetrate_world_solid(start_pos, fmj_dir, MAX_DEPTH-pierced_depth+1, util.PointContents(bdata.Src))
 				f_tr = my_trace(final_pos, final_pos+fmj_dir*bullet_range/*, f_tr.Entity*/)
-				b_tr = my_trace(final_pos+fmj_dir, final_pos-fmj_dir*100, nil)
+				b_tr = my_trace(final_pos+fmj_dir, final_pos-fmj_dir*2, nil)
 			end
 
 			-- check depth limit
-			if this_depth + pierced_depth > max_depth then 
-				print("\tExit", "Depth limit") 
+			if this_depth + pierced_depth > MAX_DEPTH then 
+				if log_debug then print("\tPen exit", "Depth limit") end
 				break 
 			end
 			pierced_depth = pierced_depth + this_depth
-			print("\tPenetrated ", now_piercing, this_depth)
+			if log_debug then print("\tPen depth ", now_piercing, this_depth) end
+			if line_debug then table.insert(points_se, final_pos) end
 
-			-- exit effects
+			-- post-penetration bullet exit effects
 			impact(b_tr)
-			fmj_sparks(b_tr)
+			fmj_sparks(b_tr) 
 
-			-- exit?
+			-- post-penetration bullet contact. Effects, damage, force 
 			if f_tr.Entity == NULL or f_tr.HitSky then
-				print("\tExit", "f_tr exited world") 
+				if log_debug then print("\tPen exit", "Bullet exited world") end
+				if line_debug then table.insert(points_se, f_tr.HitPos) end
 				break
 			end
-
-			-- entry effects and damage, 
 			impact(f_tr)
-			bullet_hit(f_tr.Entity, f_tr, fmj_dir, bdata, max_depth/pierced_depth)
+			bullet_hit(f_tr.Entity, f_tr, bdata, pierced_depth/MAX_DEPTH)
 
 			-- count traces
 			traceno = traceno + 1
-			if traceno > max_traces then 
-				print("\tExit", "Trace limit", max_traces) 
+			if traceno > MAX_TRACES then 
+				if log_debug then print("\tPen exit", "Trace limit", MAX_TRACES) end
 				break 
 			end
 
 		end
 
-		print("\tPierced depth: ", pierced_depth, max_depth)
-		--draw_line(bdata.Src, final_pos)
-		print()
-		return
+		if log_debug then print("\tPierced depth: ", pierced_depth, MAX_DEPTH, '\n') end
+		if line_debug then send_points_se(points_se) end
 
-	--end)
-	
-end)
-
---hook.Remove(hook_type, hook_name)
+		return true
+end
