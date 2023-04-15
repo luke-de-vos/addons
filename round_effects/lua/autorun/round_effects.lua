@@ -33,7 +33,7 @@ local function restrict(ply, weapon_class)
         ply:Give(weapon_class)
     end
     ply:SelectWeapon(weapon_class)
-    add_hook_til_prep("PlayerSwitchWeapon", ply:SteamID()..weapon_class..'_restrict', function(hookply, oldwep, newwep)
+    add_hook_til_prep("PlayerSwitchWeapon", ply:SteamID()..'_restrict', function(hookply, oldwep, newwep)
         if hookply:SteamID() != ply:SteamID() then return end
         if newwep:GetClass() != weapon_class and newwep:GetClass() != "weapon_ttt_unarmed" then
             --newwep:Remove()
@@ -140,7 +140,7 @@ local function fire_sale()
         hook.Remove("TTTPrepareRound", "fire_sale_remove_on_prep")
     end)
     for i,ply in ipairs(player.GetAll()) do
-        RunConsoleCommand("ulx","credits",ply:Nick(),10)
+        RunConsoleCommand("ulx","credits",ply:Nick(),3)
     end
     SendColouredChat("Fire sale")
 end
@@ -303,9 +303,7 @@ local function shoot_boost()
     local hook_name = "shoot_boost_"..hook_type
 
     add_hook_til_prep(hook_type, hook_name, function(entity, bdata)
-        print('x')
         entity:SetVelocity(-entity:GetAimVector() * bdata.Damage*20 * math.max(1, bdata.Num))
-        
     end)
 
     SendColouredChat("What's in these bullets?")
@@ -404,7 +402,7 @@ local options = {
     fire_sale,
     --first_to_jump, 
     high_grav,
-    huges,
+    --huges,
     --invert_damage, 
     --last_to_jump, 
     --last_to_take_damage, 
