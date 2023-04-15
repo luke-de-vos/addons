@@ -150,7 +150,7 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 
 	if CLIENT then return end
 
-	if bdata.Num > 1 then return end -- no shotguns
+	if bdata.Num != 1 then return end -- no shotguns
 
 	if log_debug then print() end
 
