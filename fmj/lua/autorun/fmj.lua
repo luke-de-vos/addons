@@ -145,7 +145,7 @@ local MAX_TRACES = 10
 local MAX_DEPTH = 48
 
 local hook_type = "EntityFireBullets"
-local hook_name = hook_type.."_dougie_fmj_2"
+local hook_name = "zz"..hook_type.."_dougie_fmj_2"
 hook.Add(hook_type, hook_name, function( shooter, bdata )
 
 	if CLIENT then return end
