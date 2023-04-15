@@ -35,7 +35,14 @@ local function restrict(ply, weapon_class)
     ply:SelectWeapon(weapon_class)
     add_hook_til_prep("PlayerSwitchWeapon", ply:SteamID()..'_restricted', function(ply, oldwep, newwep)
         if newwep:GetClass() != weapon_class and newwep:GetClass() != "weapon_ttt_unarmed" then
-            newwep:Remove()
+            --newwep:Remove()
+            timer.Simple(0.3, function()
+                if IsValid(ply) and ply:Alive() then
+                    ply:SelectWeapon(weapon_class)
+                    ply:ChatPrint("You are restricted to "..weapon_class..".")
+                end
+            end)
+            
             -- timer.Simple(0.1, function() 
             --     if ply:HasWeapon(weapon_class) then 
             --         ply:SelectWeapon(weapon_class)
@@ -67,6 +74,7 @@ local function butter_fingers()
                 if not IsValid(ply:GetActiveWeapon()) then return end
                 if ply:GetActiveWeapon():GetClass() == 'weapon_ttt_unarmed' then return end
                 if ply:GetActiveWeapon():GetClass() == 'weapon_zm_carry' then return end
+                if ply:GetActiveWeapon():GetClass() == 'weapon_zm_improvised' then return end
                 ply:DropWeapon()
                 ply:SelectWeapon("weapon_ttt_unarmed")
                 ply:EmitSound("WeaponFrag.Roll")
@@ -95,7 +103,7 @@ local function crowbar_zombies()
         end
     end
 
-    SendColouredChat("How many times do we have to teach you this lesson, old man?")
+    SendColouredChat("Zombies")
 
 end
 
@@ -110,7 +118,7 @@ local function fade_to_black()
             ply:ScreenFade(2, color_black, fade_time, duration)
         end
     end
-    SendColouredChat("See no evil...")
+    SendColouredChat("Traitors are blind for 5 seconds.")
     timer.Simple(fade_time + duration, function()
         SendColouredChat("The darkness passes.")
     end)
@@ -125,9 +133,7 @@ local function fire_sale()
         hook.Remove("TTTPrepareRound", "fire_sale_remove_on_prep")
     end)
     for i,ply in ipairs(player.GetAll()) do
-        if ply:GetRole() == ROLE_INNOCENT then
-            RunConsoleCommand("ulx","credits",ply:Nick(),3)
-        end
+        RunConsoleCommand("ulx","credits",ply:Nick(),10)
     end
     SendColouredChat("Fire sale")
 end
@@ -159,9 +165,9 @@ local function high_grav()
     if CLIENT then return end
 
     RunConsoleCommand("sv_gravity", "4000")
-    hook.Add("TTTPrepareRound", "low_grav_prepare_round", function()
+    hook.Add("TTTPrepareRound", "hi_grav_prepare_round", function()
         RunConsoleCommand("sv_gravity", "600")
-        hook.Remove("TTTPrepareRound", "low_grav_prepare_round")
+        hook.Remove("TTTPrepareRound", "hi_grav_prepare_round")
     end)
 
     SendColouredChat("Super gravity")
@@ -272,7 +278,7 @@ local function low_grav()
 
     if CLIENT then return end
 
-    RunConsoleCommand("sv_gravity", "10")
+    RunConsoleCommand("sv_gravity", "60")
     hook.Add("TTTPrepareRound", "low_grav_prepare_round", function()
         RunConsoleCommand("sv_gravity", "600")
         hook.Remove("TTTPrepareRound", "low_grav_prepare_round")
@@ -290,12 +296,15 @@ local function shoot_boost()
     local hook_name = "shoot_boost_"..hook_type
 
     add_hook_til_prep(hook_type, hook_name, function(entity, bdata)
-        entity:SetVelocity(-entity:GetAimVector() * 300)
+        print('x')
+        entity:SetVelocity(-entity:GetAimVector() * bdata.Damage*20 * math.max(1, bdata.Num))
+        
     end)
 
     SendColouredChat("What's in these bullets?")
 
 end
+shoot_boost()
 
 local function slaps()
 
@@ -327,7 +336,7 @@ end
 
 local function super_speed()
     if CLIENT then return end
-    speed_boost = 1.75
+    speed_boost = 1.50
     for i,ply in ipairs(player.GetAll()) do
         ply:SetWalkSpeed(ply:GetWalkSpeed() * speed_boost)
     end
@@ -383,19 +392,19 @@ end
 -- prompt effects
 
 local options = {
-    butter_fingers,
+    --butter_fingers,
     crowbar_zombies,
-    fade_to_black,
+    --fade_to_black,
     fire_sale,
     --first_to_jump, 
     high_grav,
     huges,
-    invert_damage, 
+    --invert_damage, 
     --last_to_jump, 
     --last_to_take_damage, 
     low_grav, 
-    shoot_boost, 
-    slaps, 
+    --shoot_boost, 
+    --slaps, 
     super_speed,
     switcheroo
 }
@@ -412,6 +421,6 @@ hook.Add("TTTBeginRound", "random_effects_begin_round", function()
     options[pick1]()
     options[pick2]()
 end)
-hook.Remove("TTTBeginRound", "random_effects_begin_round")
+--hook.Remove("TTTBeginRound", "random_effects_begin_round")
 
 
