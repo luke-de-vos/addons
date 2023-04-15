@@ -50,6 +50,7 @@ SWEP.DelayIndex = 1
 SWEP.NextReloadTime = 0
 
 function SWEP:PrimaryAttack()
+	if self:Clip1() <= 0 then return end
 	if SERVER then
 		local target_ent = self:GetOwner():GetEyeTrace().Entity
 		if IsValid(target_ent) and !target_ent:IsPlayer() then
