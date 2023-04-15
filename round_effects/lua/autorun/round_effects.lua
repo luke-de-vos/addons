@@ -291,6 +291,14 @@ local function low_grav()
         hook.Remove("TTTPrepareRound", "low_grav_prepare_round")
     end)
 
+    local hook_type = "KeyPress"
+    local hook_name = hook_type.."crouch_lo_grav"
+    add_hook_til_prep(hook_type, hook_name, function(ply, key)
+        if key == IN_DUCK then
+            ply:SetVelocity(Vector(0,0,-30))
+        end
+    end)
+
     SendColouredChat("Low gravity")
 
 end
