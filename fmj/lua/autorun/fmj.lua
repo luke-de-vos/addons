@@ -2,7 +2,7 @@
 if SERVER then print("Executed lua: " .. debug.getinfo(1,'S').source) end
 
 local log_debug = false
-local line_debug = true
+local line_debug = false
 
 local p2d = {}
 p2d[HITGROUP_GENERIC] = 1
@@ -203,9 +203,15 @@ function fmj_callback(shooter, f_tr, dmg_info, bdata)
 				b_tr = my_trace(final_pos+fmj_dir, final_pos-fmj_dir*2, nil)
 			end
 
+			-- scale depth
+			if now_piercing:IsPlayer() or now_piercing:IsRagdoll() then
+				this_depth = this_depth / 5
+			end
+
 			-- check depth limit
 			if this_depth + pierced_depth > MAX_DEPTH then 
 				if log_debug then print("\tPen exit", "Depth limit") end
+				if line_debug then table.insert(points_se, final_pos) end
 				break 
 			end
 			pierced_depth = pierced_depth + this_depth
