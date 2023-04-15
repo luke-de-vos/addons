@@ -33,13 +33,14 @@ local function restrict(ply, weapon_class)
         ply:Give(weapon_class)
     end
     ply:SelectWeapon(weapon_class)
-    add_hook_til_prep("PlayerSwitchWeapon", ply:SteamID()..'_restricted', function(ply, oldwep, newwep)
+    add_hook_til_prep("PlayerSwitchWeapon", ply:SteamID()..weapon_class..'_restrict', function(hookply, oldwep, newwep)
+        if hookply:SteamID() != ply:SteamID() then return end
         if newwep:GetClass() != weapon_class and newwep:GetClass() != "weapon_ttt_unarmed" then
             --newwep:Remove()
             timer.Simple(0.3, function()
-                if IsValid(ply) and ply:Alive() then
-                    ply:SelectWeapon(weapon_class)
-                    ply:ChatPrint("You are restricted to "..weapon_class..".")
+                if IsValid(hookply) and hookply:Alive() then
+                    hookply:SelectWeapon(weapon_class)
+                    hookply:ChatPrint("You are restricted to "..weapon_class..".")
                 end
             end)
             
@@ -97,11 +98,17 @@ local function crowbar_zombies()
     for i, iply in ipairs(player.GetAll()) do
         if iply:GetRole() != ROLE_TRAITOR then
             RunConsoleCommand("ulx", "force", iply:Nick(), "traitor")
-            restrict(iply, "weapon_zm_improvised")
         else
             RunConsoleCommand("ulx", "force", iply:Nick(), "innocent")
         end
     end
+    timer.Simple(1.0, function()
+        for i, iply in ipairs(player.GetAll()) do
+            if iply:GetRole() == ROLE_TRAITOR then
+                restrict(iply, "weapon_zm_improvised")
+            end
+        end
+    end)
 
     SendColouredChat("Zombies")
 
@@ -304,7 +311,6 @@ local function shoot_boost()
     SendColouredChat("What's in these bullets?")
 
 end
-shoot_boost()
 
 local function slaps()
 
