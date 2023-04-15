@@ -401,7 +401,7 @@ local options = {
     --fade_to_black,
     fire_sale,
     --first_to_jump, 
-    high_grav,
+    --high_grav,
     --huges,
     --invert_damage, 
     --last_to_jump, 
