@@ -102,10 +102,11 @@ local function crowbar_zombies()
             RunConsoleCommand("ulx", "force", iply:Nick(), "innocent")
         end
     end
-    timer.Simple(1.0, function()
+    timer.Simple(0.5, function()
         for i, iply in ipairs(player.GetAll()) do
             if iply:GetRole() == ROLE_TRAITOR then
                 restrict(iply, "weapon_zm_improvised")
+                iply:GetActiveWeapon():SetHoldType("knife")
             end
         end
     end)
@@ -421,18 +422,23 @@ local options = {
     switcheroo
 }
 
-hook.Add("TTTBeginRound", "random_effects_begin_round", function()
-    if CLIENT then return end
-    pick1 = math.random(#options)
-    pick2 = math.random(#options)
-    if #options > 1 then
-        while pick2 == pick1         do
+
+hook.Add("PlayerSay", "custom_commands_ffa", function(sender, text, teamChat)
+    if sender:GetUserGroup() ~= "user" and text == "!effects" then
+        hook.Add("TTTBeginRound", "random_effects_begin_round", function()
+            if CLIENT then return end
+            pick1 = math.random(#options)
             pick2 = math.random(#options)
-        end
+            if #options > 1 then
+                while pick2 == pick1         do
+                    pick2 = math.random(#options)
+                end
+            end
+            options[pick1]()
+            options[pick2]()
+        end)
     end
-    options[pick1]()
-    options[pick2]()
+    if sender:GetUserGroup() ~= "user" and text == "!effects_off" then
+        hook.Remove("TTTBeginRound", "random_effects_begin_round")
+    end
 end)
---hook.Remove("TTTBeginRound", "random_effects_begin_round")
-
-
