@@ -2,7 +2,7 @@
 if SERVER then print("Executed lua: " .. debug.getinfo(1,'S').source) end
 
 local log_debug = false
-local line_debug = false
+local line_debug = true
 
 local p2d = {}
 p2d[HITGROUP_GENERIC] = 1
@@ -98,7 +98,7 @@ local function penetrate_world_solid(origin, dir, max_depth, contents_src)
 		depth = depth + 1
 		local next_contents = util.PointContents(next_pos)
 		if next_contents == CONTENTS_EMPTY 
-		or next_contents == contents_src 
+		or next_contents == contents_src
 		or depth > max_depth then
 			return next_pos, depth
 		end
@@ -137,7 +137,6 @@ local function bullet_hit(ent, tr, bdata, percent_pierced)
 		end
 	end
 	
-	
 end
 
 
@@ -150,8 +149,6 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 
 	if CLIENT then return end
 
-	if bdata.Num != 1 then return end -- no shotguns
-
 	if log_debug then print() end
 
 	bdata.Callback = function(att, tr, dmg_info)
@@ -163,6 +160,11 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 end)
 --hook.Remove(hook_type, hook_name)
 
+for i,ply in ipairs(player.GetAll()) do
+	if ply:IsValid() then
+		ply:GetActiveWeapon():SetWeaponHoldType("knife")
+	end
+end
 
 function fmj_callback(shooter, f_tr, dmg_info, bdata)
 
