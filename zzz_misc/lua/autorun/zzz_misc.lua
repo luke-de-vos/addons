@@ -228,3 +228,10 @@ if SERVER then
 end
 
 
+
+
+
+hook.Add("PlayerDroppedWeapon", "sfx_drop_hook", function(owner, wep)
+	owner:EmitSound("WeaponFrag.Roll")
+end)
+
