@@ -145,7 +145,7 @@ function SWEP:PrimaryAttack(ply)
 	if ( ply:IsValid() and (ply:IsPlayer() or ply:IsNPC()) ) then
 		if CLIENT then return end
 		if ply:GetNWBool( "GotCuffed" ) == true or ply:GetNWBool( "FrozenYay" ) == true then
-			send_cuff_message(self:GetOwner(), ply:Nick().." was already cuffed this round.", 1)
+			send_cuff_message(self:GetOwner(), ply:Nick().." was already cuffed.", 1)
 			return
 		end
 		self:GetOwner():EmitSound("npc/metropolice/vo/holdit.wav", 50, 100)
@@ -224,10 +224,10 @@ function SWEP:SecondaryAttack(ply)
 				send_cuff_message(ply, "You are released.", 2)
 				send_cuff_message(self:GetOwner(), "You released "..ply:Nick()..".", 2)
 			elseif ply:GetNWBool( "GotCuffed" ) == false then
-				send_cuff_message(self:GetOwner(), ply:Nick().." is not cuffed.", 1)
+				--send_cuff_message(self:GetOwner(), ply:Nick().." is not cuffed.", 1)
 				return;
 			elseif ply:GetNWBool( "GotCuffed" ) == true or ply:GetNWBool( "FrozenYay" ) == false then
-				send_cuff_message(self:GetOwner(), ply:Nick().." is not cuffed.", 1)
+				--send_cuff_message(self:GetOwner(), ply:Nick().." is not cuffed.", 1)
 				return;
 			end
 		end
