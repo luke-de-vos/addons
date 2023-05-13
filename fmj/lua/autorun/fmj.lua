@@ -2,7 +2,7 @@
 if SERVER then print("Executed lua: " .. debug.getinfo(1,'S').source) end
 
 local log_debug = false
-local line_debug = true
+local line_debug = false
 
 local p2d = {}
 p2d[HITGROUP_GENERIC] = 1
@@ -15,32 +15,28 @@ p2d[HITGROUP_LEFTLEG] = 0.54
 p2d[HITGROUP_RIGHTLEG] = 0.54
 
 -- math helpers
-function myDot(a, b)
+local function myDot(a, b)
     return (a[1] * b[1]) + (a[2] * b[2]) + (a[3] * b[3])
 end
 
-function myMag(a)
+local function myMag(a)
     return math.sqrt((a[1] * a[1]) + (a[2] * a[2]) + (a[3] * a[3]))
 end
 
-function get_angle(vec1, vec2)
+local function fmj_get_angle(vec1, vec2)
     return math.deg(math.acos(myDot(vec1, vec2) / (myMag(vec1) * myMag(vec2)))) - 90
 end
 
-function myNormalize(vec)
+local function myNormalize(vec)
     local mag = myMag(vec)
     return Vector(vec[1] / mag, vec[2] / mag, vec[3] / mag)
 end
 
-function myScale(vec, scalar)
+local function myScale(vec, scalar)
     return Vector(vec[1] * scalar, vec[2] * scalar, vec[3] * scalar)
 end
 
-function mySub(vec1, vec2)
-    return Vector(vec1[1] - vec2[1], vec1[2] - vec2[2], vec1[3] - vec2[3])
-end
-
-function get_reflection(line, normal)
+local function get_reflection(line, normal)
     -- Normalize the normal vector
     local normalized_normal = myNormalize(normal)
 
@@ -48,13 +44,13 @@ function get_reflection(line, normal)
     local projection = myDot(line, normalized_normal)
 
     -- Calculate the reflection vector using the formula R = V - 2 * (V · N) * N
-    local reflection = mySub(line, myScale(normalized_normal, 2 * projection))
+    local reflection = line - myScale(normalized_normal, 2 * projection)
 
     return reflection
 end
 
 
--- visualize last bullet's path and penetrations
+
 if SERVER then
     util.AddNetworkString("fmj_trace_message")
 end
@@ -69,6 +65,7 @@ local function send_points_se(vec_table)
 	end
 end
 
+-- visualize last bullet's path and penetrations
 if CLIENT then
 	local my_color1 = Color(150, 0, 0)
 	local my_color2 = Color(0, 200, 0)
@@ -155,7 +152,7 @@ local function bullet_hit(ent, tr, bdata, percent_pierced)
 		local dinfo = DamageInfo()
 		if ent:IsPlayer() then
 			ent:SetLastHitGroup(tr.HitGroup)
-		end		
+		end
 		dinfo:SetDamage(dmg_amt)
 		dinfo:SetAttacker(bdata.Attacker)
 		dinfo:SetInflictor(bdata.Attacker:GetActiveWeapon())
@@ -171,7 +168,7 @@ local function bullet_hit(ent, tr, bdata, percent_pierced)
 		-- apply force to physics objects and log
 		if IsValid(ent:GetPhysicsObject()) then
 			if ent:IsRagdoll() then
-				ent:GetPhysicsObject():SetVelocity(bdata.Force * (tr.Normal+Vector(0,0,0.5)) * 150)
+				ent:GetPhysicsObject():SetVelocity(bdata.Force * (tr.Normal+Vector(0,0,0.5)) * 120)
 			else
 				ent:GetPhysicsObject():SetVelocity(bdata.Force * tr.Normal * 20)
 			end
@@ -181,10 +178,11 @@ local function bullet_hit(ent, tr, bdata, percent_pierced)
 end
 
 
-local MAX_TRACES = 30
-local MAX_RICOCHETS = 30
+local MAX_TRACES = 7
+local MAX_RICOCHETS = 2
 local MAX_DEPTH = 48
-local RICO_DELAY = 0.01
+local MAX_ANGLE = 20
+local MIN_DAMAGE = 25
 
 local hook_type = "EntityFireBullets"
 local hook_name = "zz"..hook_type.."_dougie_fmj_2"
@@ -208,7 +206,7 @@ local function tracer(f_tr)
 	local eff = EffectData()
 	eff:SetOrigin(f_tr.HitPos)
 	eff:SetStart(f_tr.StartPos)
-	eff:SetScale(10000)
+	eff:SetScale(4500)
 	eff:SetFlags(0x0001)
 	--eff:SetAttachment(1)
 	util.Effect("Tracer", eff, false, true)
@@ -235,7 +233,7 @@ function fmj_callback(shooter, f_tr, dmg_info, bdata)
 
 	local fmj_dir = f_tr.Normal
 
-	if log_debug then print("\tHit angle:", get_angle(fmj_dir, f_tr.HitNormal)) end
+	--if log_debug then print("\tHit angle:", fmj_get_angle(fmj_dir, f_tr.HitNormal)) end
 
 	while true do
 
@@ -254,9 +252,9 @@ function fmj_callback(shooter, f_tr, dmg_info, bdata)
 		fmj_dir = f_tr.Normal
 
 		-- check angle
-		ang = get_angle(fmj_dir, f_tr.HitNormal)
-		if log_debug then print("\tHit angle:", ang) end
-		if ang > 0 and !(hitting:IsPlayer() or hitting:IsRagdoll()) then
+		hit_angle = fmj_get_angle(fmj_dir, f_tr.HitNormal)
+		if log_debug then print("\tHit angle", hit_angle) end
+		if hit_angle < MAX_ANGLE and bdata.Damage >= MIN_DAMAGE and !hitting:IsPlayer() and !hitting:IsRagdoll() then
 			-- do ricochet
 			num_ricochets = num_ricochets + 1
 			if num_ricochets > MAX_RICOCHETS then
@@ -268,6 +266,7 @@ function fmj_callback(shooter, f_tr, dmg_info, bdata)
 			f_tr = my_trace(start_pos, start_pos+fmj_dir*bullet_range, f_tr.Entity)
 			tracer(f_tr)
 			fmj_sparks(f_tr.StartPos, f_tr.Normal)
+			sound.Play("FX_RicochetSound.Ricochet", f_tr.StartPos)
 		else
 			-- don't do ricochet. check for penetration instead
 			if not f_tr.HitWorld then
@@ -279,7 +278,7 @@ function fmj_callback(shooter, f_tr, dmg_info, bdata)
 			else
 				-- for world solids, step through world solid, then trace forward and back to set up effects
 				final_pos, this_depth = penetrate_world_solid(start_pos, fmj_dir, MAX_DEPTH-pierced_depth+1, util.PointContents(bdata.Src))
-				f_tr = my_trace(final_pos, final_pos+fmj_dir*bullet_range/*, f_tr.Entity*/)
+				f_tr = my_trace(final_pos, final_pos+fmj_dir*bullet_range, shooter)
 				b_tr = my_trace(final_pos+fmj_dir, final_pos-fmj_dir*2, nil)
 			end
 
@@ -293,7 +292,7 @@ function fmj_callback(shooter, f_tr, dmg_info, bdata)
 				break 
 			end
 			pierced_depth = pierced_depth + this_depth
-			if log_debug then print("\tPen depth ", hitting, this_depth) end
+			if log_debug then print("\tPen depth ", this_depth) end
 			if line_debug then table.insert(points_se, final_pos) end
 
 			-- post-penetration bullet exit effects
@@ -302,7 +301,7 @@ function fmj_callback(shooter, f_tr, dmg_info, bdata)
 
 		end
 
-		-- post-penetration/ricochet bullet contact. Effects, damage, force 
+		-- final penetration/ricochet bullet contact. Effects, damage, force 
 		if f_tr.Entity == NULL or f_tr.HitSky then
 			if log_debug then print("\tPen exit", "Bullet exited world") end
 			if line_debug then table.insert(points_se, f_tr.HitPos) end
@@ -310,6 +309,9 @@ function fmj_callback(shooter, f_tr, dmg_info, bdata)
 		end
 		impact(f_tr)
 		bullet_hit(f_tr.Entity, f_tr, bdata, pierced_depth/MAX_DEPTH)
+		if f_tr.Entity:GetClass() == "func_breakable_surf" then
+			f_tr.Entity:Fire("Shatter")
+		end
 
 	end
 
@@ -318,3 +320,4 @@ function fmj_callback(shooter, f_tr, dmg_info, bdata)
 
 	return true
 end
+
