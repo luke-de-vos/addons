@@ -30,11 +30,17 @@ if SERVER then
 			end
 		end
 	end)
+	
 
 	-- restart round and begin free for all deags 
 	function ffa_on(req_weapon)
 		_drop_hooks()
 		local died_with = {}  -- track what weapon player died with. Equip that weapon on spawn
+
+		_add_hook("PlayerSay", "ffa_chat_to_spawn", function(sender, text, teamChat)
+			print(sender:Nick())
+			RunConsoleCommand("ulx", "respawn", sender:Name()) 
+		end)
 		
 		-- HOOKS
 		-- assign innocent role to every player
@@ -47,45 +53,24 @@ if SERVER then
 		end)
 
 		-- on spawn: reset kill trackers, gain and equip weapons
-		_add_hook("PlayerSpawn", "ffa_PlayerSpawn", function(ply, transition)
+		_add_hook("PlayerLoadout", "ffa_PlayerLoadout", function(ply)
 			ply:SetRole(0)
 			local given_weapon = nil
-			local last_wep = died_with[ply:UserID()]
+			--local last_wep = died_with[ply:UserID()]
 			-- give weapon
-			timer.Simple(0.2, function()
-				if last_wep ~= nil then
-					ply:Give(last_wep)
-					given_weapon = last_wep
-				else
-					local gave_request = nil
-					gave_request = IsValid(ply:Give(req_weapon))
-					given_weapon = req_weapon
-					if !gave_request then
-						print('Failed to GIVE '..req_weapon)
-						ply:Give(DEFAULT_WEAPON)
-						given_weapon = DEFAULT_WEAPON
-					end
-				end
-			end)
-			if last_wep ~= nil then
-				ply:Give(last_wep)
-				given_weapon = last_wep
-			else
-				local gave_request = nil
-				gave_request = IsValid(ply:Give(req_weapon))
-				given_weapon = req_weapon
-				if !gave_request then
-					print('Failed to GIVE '..req_weapon)
-					ply:Give(DEFAULT_WEAPON)
-					given_weapon = DEFAULT_WEAPON
-				end
+			if !(ply:Give(req_weapon)) then
+				ply:Give(DEFAULT_WEAPON)
 			end
+			ply:Give("weapon_zm_improvised")
+			ply:Give("weapon_ttt_unarmed")
 
 			-- equip weapon
-			timer.Simple(0.3, function()
+			timer.Simple(0.2, function()
 				ply:SelectWeapon(req_weapon)
 				_give_current_ammo(ply, 10)
 			end)
+
+			return true -- override default loadout
 			
 		end)
 		
@@ -121,7 +106,7 @@ if SERVER then
 		end)	
 
 		RunConsoleCommand("ttt_debug_preventwin", "1")
-		RunConsoleCommand("ttt_preptime_seconds", "2")
+		RunConsoleCommand("ttt_preptime_seconds", "1")
 		RunConsoleCommand("ttt_roundtime_minutes", FFA_ROUND_LEN)
 		RunConsoleCommand("ulx", "roundrestart")
 		
@@ -136,3 +121,5 @@ if SERVER then
 		RunConsoleCommand("ulx", "roundrestart")
 	end
 end
+
+
