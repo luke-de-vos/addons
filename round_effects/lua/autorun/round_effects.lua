@@ -406,7 +406,7 @@ end
 
 local options = {
     --butter_fingers,
-    crowbar_zombies,
+    --crowbar_zombies,
     --fade_to_black,
     fire_sale,
     --first_to_jump, 
@@ -423,7 +423,7 @@ local options = {
 }
 
 
-hook.Add("PlayerSay", "custom_commands_ffa", function(sender, text, teamChat)
+hook.Add("PlayerSay", "command_dougies_randomat", function(sender, text, teamChat)
     if sender:GetUserGroup() ~= "user" and text == "!effects" then
         hook.Add("TTTBeginRound", "random_effects_begin_round", function()
             if CLIENT then return end
