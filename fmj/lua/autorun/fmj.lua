@@ -177,7 +177,7 @@ local function bullet_hit(ent, tr, bdata, percent_pierced)
 	
 end
 
-
+--
 local MAX_TRACES = 7
 local MAX_RICOCHETS = 2
 local MAX_DEPTH = 48
