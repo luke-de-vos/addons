@@ -2,6 +2,62 @@ print("Executed lua: " .. debug.getinfo(1,'S').source)
 
 if SERVER then
 
+    -- GAMEPLAY
+    function _respawn(ply, delay)
+        if IsValid(ply) then
+            timer.Simple(delay, function() 
+                if IsValid(ply) then
+                    RunConsoleCommand("ulx", "respawn", ply:Name()) 
+                    timer.Simple(0.2, function() ply:SetHealth(ply:GetMaxHealth()) end)
+                end
+            end)
+        end
+    end
+
+    function _give_current_ammo(ply, num_mags)
+        local wep = ply:GetActiveWeapon()
+        if (!IsValid(wep)) then return end
+        local ammo_type = wep:GetPrimaryAmmoType()
+        local mag_size = wep:GetMaxClip1()
+        ply:GiveAmmo(mag_size*num_mags, ammo_type, false)
+    end
+
+    -- HOOK MANAGEMENT
+    local mode_hooks = {}
+
+    function _parse_command(sender, text, accept_command)
+        if sender:GetUserGroup() == "user" then return end
+        if text:sub(1,1) != "!" then return end
+        local args = _my_split(text, " ")
+        if args[1] == accept_command then
+            return args
+        else
+            return
+        end
+    end 
+
+    function _change_mode(mode_hooks)
+        _drop_hooks()
+        for func in mode_hooks do
+            _add_hook(func)
+        end
+    end
+    
+    function _add_hook(hook_type, hook_name, hook_func)
+        table.insert(mode_hooks, {hook_type, hook_name})
+        hook.Add(hook_type, hook_name, hook_func)
+        print("Added hook (" .. hook_type .. " " .. hook_name .. ")")
+    end
+
+    function _drop_hooks()
+        print("Removing "..#mode_hooks.." hooks.")
+        for index, entry in ipairs(mode_hooks) do
+            print("Removed hook ("..entry[1]..", "..entry[2]..").")
+            hook.Remove(entry[1], entry[2])
+        end
+        mode_hooks = {}
+    end
+
     -- UTILITY
     function _get_roles()
         local role_counts = {0,0,0,0}
@@ -125,28 +181,34 @@ if SERVER then
         end
     end
 
-    function _highlight_kill(victim, attacker, slo_scale, duration)
-        -- make camera ent and put in place
+
+
+
+
+
+
+
+
+    
+
+
+    local function place_cam_ent()
         local cam_ent = ents.Create("prop_dynamic")
         cam_ent:SetModel("models/error.mdl")
         cam_ent:Spawn()
-        cam_ent:SetMoveType(MOVETYPE_NONE)
+        cam_ent:SetMoveType(MOVETYPE_FLY) --MOVETYPE_NONE
         cam_ent:SetRenderMode(RENDERMODE_NONE)
         cam_ent:SetSolid(SOLID_NONE)
-        local vp = victim:GetPos()
-        local ap = attacker:GetPos()
-        local dvec = vp - ap --x-y, offset pushes vector from y through x
-        local offset = _normalize_vec(dvec, 100)
-        local cp = vp
-        cp = vp + offset
-        cp.z = cp.z + 10
-        cam_ent:SetPos(cp)
-        local cam_angle = (ap - cp)
-        cam_angle.z = cam_angle.z + 65
-        cam_ent:SetAngles((cam_angle):Angle()) -- x-y, gives angle from y to x
+        return cam_ent
+    end
+
+    local function watch_cam(cam_ent, focus_ent, slo_scale, duration)
         -- update player povs
         for i,ply in ipairs(player.GetAll()) do
+            if ply:Nick() == focus_ent:Nick() then continue end
             ply:SetViewEntity(cam_ent)
+            ply:Spectate(OBS_MODE_ROAMING)
+		    ply:SpectateEntity(focus_ent)
             ply:CrosshairDisable()
         end
         timer.Simple(0.05, function() -- sliiight delay. Looks better
@@ -156,6 +218,9 @@ if SERVER then
                 game.SetTimeScale(1.0)
                 for i,ply in ipairs(player.GetAll()) do
                     ply:SetViewEntity(ply)
+                    ply:UnSpectate()
+                    ply:DrawViewModel(true)
+                    ply:DrawWorldModel(true)
                     ply:CrosshairEnable()
                 end
                 cam_ent:Remove()
@@ -163,61 +228,95 @@ if SERVER then
         end)
     end
 
-    -- GAMEPLAY
-    function _respawn(ply, delay)
-        if IsValid(ply) then
-            timer.Simple(delay, function() 
-                if IsValid(ply) then
-                    RunConsoleCommand("ulx", "respawn", ply:Name()) 
-                    timer.Simple(0.2, function() ply:SetHealth(ply:GetMaxHealth()) end)
-                end
-            end)
+    function _highlight_kill(victim, attacker, slo_scale, duration)
+        -- make camera ent and put in place
+        local cam_ent = place_cam_ent()
+        local vp = victim:GetPos()
+        local ap = attacker:GetPos()
+        local offset = _normalize_vec((vp - ap), 100)
+        local cp = vp + offset + Vector(0,0,10)
+        --cam_ent:SetPos(cp)
+        --cam_ent:SetAngles(((ap - cp + Vector(0,0,65))):Angle()) -- x-y, gives angle from y to x
+        watch_cam(cam_ent, attacker, slo_scale, duration)
+    end
+
+
+
+
+
+    function _new_highlight(victim, attacker, slo_scale, duration)
+        game.SetTimeScale(slo_scale)
+        --victim:SpectateEntity(attacker)
+        --victim:SetObserverMode(OBS_MODE_DEATHCAM)
+
+        for i,ply in ipairs(player.GetAll()) do
+            ply:SetViewEntity(victim)
         end
+
+        -- revert
+        timer.Simple(duration * slo_scale, function()
+            game.SetTimeScale(1.0)
+            for i,ply in ipairs(player.GetAll()) do
+                ply:SetViewEntity(ply)
+                ply:UnSpectate()
+                --ply:Spawn()
+            end
+        end)
+
     end
 
-    function _give_current_ammo(ply, num_mags)
-        local wep = ply:GetActiveWeapon()
-        if (!IsValid(wep)) then return end
-        local ammo_type = wep:GetPrimaryAmmoType()
-        local mag_size = wep:GetMaxClip1()
-        ply:GiveAmmo(mag_size*num_mags, ammo_type, false)
-    end
+    hook.Add("PlayerDeath","do_slow_mo", function(vic, inflictor, attacker)
+        --_highlight_kill(vic, attacker, 0.25, 4)
+        timer.Simple(0.1, function()
+            _new_highlight(vic, attacker, 0.5, 3)
+        end)
+    end)
+    hook.Remove("PlayerDeath","do_slow_mo")
 
-    -- HOOK MANAGEMENT
-    local mode_hooks = {}
+    hook.Add("EntityFireBullets", "follow_bullet", function(shooter, bdata)
+        local slo_scale = 0.1
+        local duration = 3
+        game.SetTimeScale(slo_scale)
+        cam_ent = place_cam_ent()
+        cam_ent:SetAngles(shooter:GetAimVector():Angle())
+        cam_ent:SetPos(shooter:GetShootPos())
+        shooter:SetViewEntity(cam_ent)
+        shooter:SetObserverMode(OBS_MODE_FIXED)
+        --cam_ent:ApplyForceCenter(Vector(0,0,100))
+        cam_ent:SetVelocity(shooter:GetAimVector()*1000)
+        print('shot')
+        timer.Simple(duration * slo_scale, function()
+            print('x')
+            game.SetTimeScale(1.0)
+            if IsValid(cam_ent) then
+                cam_ent:Remove()
+                shooter:SetObserverMode(OBS_MODE_NONE)
+                shooter:SetViewEntity(shooter)
+                shooter:UnSpectate()
+            end
+        end)
+    end)
+    hook.Remove("EntityFireBullets","follow_bullet")
 
-    function _parse_command(sender, text, accept_command)
-        if sender:GetUserGroup() == "user" then return end
-        if text:sub(1,1) != "!" then return end
-        local args = _my_split(text, " ")
-        if args[1] == accept_command then
-            return args
-        else
-            return
-        end
-    end 
+    --Entity(1):SetObserverMode(OBS_MODE_NONE)
+    --Entity(1):SetObserverMode(OBS_MODE_NONE)
+    --Entity(1):SpectateEntity(Entity(1))
+    --Entity(1):SetObserverMode(OBS_MODE_FIXED)
 
-    function _change_mode(mode_hooks)
-        _drop_hooks()
-        for func in mode_hooks do
-            _add_hook(func)
-        end
-    end
-    
-    function _add_hook(hook_type, hook_name, hook_func)
-        table.insert(mode_hooks, {hook_type, hook_name})
-        hook.Add(hook_type, hook_name, hook_func)
-        print("Added hook (" .. hook_type .. " " .. hook_name .. ")")
-    end
+    --Entity(1):SetViewEntity(Entity(1))
+    --Entity(1):SetObserverMode(OBS_MODE_DEATHCAM)
 
-    function _drop_hooks()
-        print("Removing "..#mode_hooks.." hooks.")
-        for index, entry in ipairs(mode_hooks) do
-            print("Removed hook ("..entry[1]..", "..entry[2]..").")
-            hook.Remove(entry[1], entry[2])
-        end
-        mode_hooks = {}
-    end
+    --Entity(1):UnSpectate()
+    --Entity(1):SetViewEntity(Entity(1))
+
+
+
+
+    --Entity(2):SetViewEntity(Entity(1))
+
+
+
+
 end
 
 -- colored chat
