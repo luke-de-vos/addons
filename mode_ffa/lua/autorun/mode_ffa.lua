@@ -38,10 +38,9 @@ if SERVER then
 		local died_with = {}  -- track what weapon player died with. Equip that weapon on spawn
 
 		_add_hook("PlayerSay", "ffa_chat_to_spawn", function(sender, text, teamChat)
-			print(sender:Nick())
 			RunConsoleCommand("ulx", "respawn", sender:Name()) 
 		end)
-		
+
 		-- HOOKS
 		-- assign innocent role to every player
 		_add_hook("TTTBeginRound", "ffa_ForceRole", function()
