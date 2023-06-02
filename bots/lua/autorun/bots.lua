@@ -65,15 +65,17 @@ if SERVER then
 
 	function attempt_attack(ply, attack_type)
 		-- attack_type (int) 1 or 2 for primary and secondary attack respectively
-		if IsValid(ply) and IsValid(ply:GetActiveWeapon()) then
-			if attack_type == 1 then
-				ply:GetActiveWeapon():PrimaryAttack()
-			elseif attack_type == 2 then
-				ply:GetActiveWeapon():SecondaryAttack()		
-			elseif attack_type == 3 then
-				ply:GetActiveWeapon():Reload()
-			end			
-		end
+		timer.Simple(0.5, function()
+			if IsValid(ply) and IsValid(ply:GetActiveWeapon()) then
+				if attack_type == 1 then
+					ply:GetActiveWeapon():PrimaryAttack()
+				elseif attack_type == 2 then
+					ply:GetActiveWeapon():SecondaryAttack()		
+				elseif attack_type == 3 then
+					ply:GetActiveWeapon():Reload()
+				end			
+			end
+		end)
 	end	
 
 	function get_closest_player(source)
