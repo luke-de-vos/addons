@@ -150,9 +150,6 @@ local function bullet_hit(ent, tr, bdata, percent_pierced)
 	if IsValid(ent) /*and ent:GetClass() != "prop_physics"*/ then -- note: world entity is not valid
 		local dmg_amt = math.ceil((1-percent_pierced) * bdata.Damage * p2d[tr.HitGroup])
 		local dinfo = DamageInfo()
-		if ent:IsPlayer() then
-			ent:SetLastHitGroup(tr.HitGroup)
-		end
 		dinfo:SetDamage(dmg_amt)
 		dinfo:SetAttacker(bdata.Attacker)
 		dinfo:SetInflictor(bdata.Attacker:GetActiveWeapon())
@@ -161,10 +158,15 @@ local function bullet_hit(ent, tr, bdata, percent_pierced)
 		dinfo:SetDamageType(DMG_BULLET)
 		dinfo:SetAmmoType(game.GetAmmoID(bdata.AmmoType))
 		dinfo:SetReportedPosition(tr.HitPos)
-		ent:TakeDamageInfo(dinfo)
+
 		if ent:IsPlayer() then
+			ent:SetLastHitGroup(tr.HitGroup)
+			if ent:Health() <= dmg_amt then
+				print(bdata.Attacker:Nick().." killed "..ent:Nick().. " with FMJ or ricochet damage.")
+			end
 			if log_debug then print("\tPen damage", ent, dmg_amt) end
 		end
+
 		-- apply force to physics objects and log
 		if IsValid(ent:GetPhysicsObject()) then
 			if ent:IsRagdoll() then
@@ -173,6 +175,9 @@ local function bullet_hit(ent, tr, bdata, percent_pierced)
 				ent:GetPhysicsObject():SetVelocity(bdata.Force * tr.Normal * 20)
 			end
 		end
+
+		ent:TakeDamageInfo(dinfo)
+
 	end
 	
 end
@@ -263,7 +268,7 @@ function fmj_callback(shooter, f_tr, dmg_info, bdata)
 				break
 			end
 			fmj_dir = get_reflection(fmj_dir, f_tr.HitNormal)
-			f_tr = my_trace(start_pos, start_pos+fmj_dir*bullet_range, f_tr.Entity)
+			f_tr = my_trace(start_pos, start_pos+fmj_dir*bullet_range, {shooter, f_tr.Entity})
 			tracer(f_tr)
 			fmj_sparks(f_tr.StartPos, f_tr.Normal)
 			sound.Play("FX_RicochetSound.Ricochet", f_tr.StartPos)
@@ -271,15 +276,15 @@ function fmj_callback(shooter, f_tr, dmg_info, bdata)
 			-- don't do ricochet. check for penetration instead
 			if not f_tr.HitWorld then
 				-- for non-world solids, run a filtered trace through ent then an unfiltered trace back to get depth
-				f_tr = my_trace(start_pos, start_pos+fmj_dir*bullet_range, f_tr.Entity)
-				b_tr = my_trace(f_tr.HitPos-fmj_dir, start_pos, nil)
+				f_tr = my_trace(start_pos, start_pos+fmj_dir*bullet_range, {shooter, f_tr.Entity})
+				b_tr = my_trace(f_tr.HitPos-fmj_dir, start_pos, shooter)
 				final_pos = b_tr.HitPos
 				this_depth = f_tr.StartPos:Distance(final_pos)
 			else
 				-- for world solids, step through world solid, then trace forward and back to set up effects
 				final_pos, this_depth = penetrate_world_solid(start_pos, fmj_dir, MAX_DEPTH-pierced_depth+1, util.PointContents(bdata.Src))
 				f_tr = my_trace(final_pos, final_pos+fmj_dir*bullet_range, shooter)
-				b_tr = my_trace(final_pos+fmj_dir, final_pos-fmj_dir*2, nil)
+				b_tr = my_trace(final_pos+fmj_dir, final_pos-fmj_dir*2, shooter)
 			end
 
 			-- check depth limit
