@@ -143,8 +143,25 @@ local function penetrate_world_solid(origin, dir, max_depth, contents_src)
 	end
 end
 
+if SERVER then
+	-- Server-side code
+	util.AddNetworkString("FMJ_MESSAGE")
+else
+	net.Receive("FMJ_MESSAGE", function(len)
+		print('FMJ_MESSAGE received')
+		local val = net.ReadInt(2)
+		print("VAL", val)
+		if val == 0 then
+			notification.AddLegacy("RICOCHET KILL!", NOTIFY_UNDO, 4)
+			surface.PlaySound("buttons/button10.wav")
+		elseif val == 1 then
+			notification.AddLegacy("FMJ KILL!", NOTIFY_UNDO, 4)
+			surface.PlaySound("buttons/button10.wav")
+		end
+	end)
+end
 
-local function bullet_hit(ent, tr, bdata, percent_pierced) 
+local function bullet_hit(ent, tr, bdata, percent_pierced, status) 
 	
 	-- apply damage
 	if IsValid(ent) /*and ent:GetClass() != "prop_physics"*/ then -- note: world entity is not valid
@@ -163,6 +180,11 @@ local function bullet_hit(ent, tr, bdata, percent_pierced)
 			ent:SetLastHitGroup(tr.HitGroup)
 			if ent:Health() <= dmg_amt then
 				print(bdata.Attacker:Nick().." killed "..ent:Nick().. " with FMJ or ricochet damage.")
+				if SERVER then
+					net.Start("FMJ_MESSAGE")
+					net.WriteInt(status,2)
+					net.Send(bdata.Attacker)
+				end
 			end
 			if log_debug then print("\tPen damage", ent, dmg_amt) end
 		end
@@ -201,6 +223,7 @@ hook.Add(hook_type, hook_name, function( shooter, bdata )
 		fmj_callback(att, tr, dmg_info, bdata)
 	end
 
+	
 	return true -- return true to apply bdata updates to bullet
 
 end)
@@ -220,109 +243,121 @@ end
 
 function fmj_callback(shooter, f_tr, dmg_info, bdata)
 
-	if f_tr.HitSky or f_tr.Entity == NULL then return end
+	--timer.Simple(3, function() 
 
-	-- prep
-	local now_piercing = nil
-	local my_filter = nil
-	local this_depth = nil
-	local start_pos = nil
-	local final_pos = nil
+		if f_tr.HitSky or f_tr.Entity == NULL then return end
 
-	local points_se = {}
-	local pierced_depth = 0
-	local num_ricochets = 0
-	local traceno = 0
-	local bullet_range = math.min(bdata.Distance, 10000)
-	local hit_angle = 0
+		-- prep
+		local now_piercing = nil
+		local my_filter = nil
+		local this_depth = nil
+		local start_pos = nil
+		local final_pos = nil
 
-	local fmj_dir = f_tr.Normal
+		local points_se = {}
+		local pierced_depth = 0
+		local num_ricochets = 0
+		local traceno = 0
+		local bullet_range = math.min(bdata.Distance, 10000)
+		local hit_angle = 0
+		local status = -1 -- -1 = normal, 0 = ricochet, 1 = fmj
 
-	--if log_debug then print("\tHit angle:", fmj_get_angle(fmj_dir, f_tr.HitNormal)) end
+		local fmj_dir = f_tr.Normal
 
-	while true do
+		--if log_debug then print("\tHit angle:", fmj_get_angle(fmj_dir, f_tr.HitNormal)) end
 
-		-- count traces
-		traceno = traceno + 1
-		if traceno > MAX_TRACES then 
-			if log_debug then print("\tPen exit", "Trace limit", MAX_TRACES) end
-			break 
-		end
+		while true do
 
-		start_pos = f_tr.HitPos
-		if line_debug then table.insert(points_se, start_pos) end
-		hitting = f_tr.Entity
-		if log_debug then print("\tHit", hitting) end
+			-- count traces
+			traceno = traceno + 1
+			if traceno > MAX_TRACES then 
+				if log_debug then print("\tPen exit", "Trace limit", MAX_TRACES) end
+				break 
+			end
 
-		fmj_dir = f_tr.Normal
+			start_pos = f_tr.HitPos
+			if line_debug then table.insert(points_se, start_pos) end
+			hitting = f_tr.Entity
+			if log_debug then print("\tHit", hitting) end
 
-		-- check angle
-		hit_angle = fmj_get_angle(fmj_dir, f_tr.HitNormal)
-		if log_debug then print("\tHit angle", hit_angle) end
-		if hit_angle < MAX_ANGLE and bdata.Damage >= MIN_DAMAGE and !hitting:IsPlayer() and !hitting:IsRagdoll() then
-			-- do ricochet
-			num_ricochets = num_ricochets + 1
-			if num_ricochets > MAX_RICOCHETS then
-				if log_debug then print("\tExit", "Ricochet limit reached.") end
+			fmj_dir = f_tr.Normal
+
+			-- check angle
+			hit_angle = fmj_get_angle(fmj_dir, f_tr.HitNormal)
+			if log_debug then print("\tHit angle", hit_angle) end
+			if hit_angle < MAX_ANGLE and bdata.Damage >= MIN_DAMAGE and !hitting:IsPlayer() and !hitting:IsRagdoll() then
+				-- do ricochet
+				status = 0
+				num_ricochets = num_ricochets + 1
+				if num_ricochets > MAX_RICOCHETS then
+					if log_debug then print("\tExit", "Ricochet limit reached.") end
+					if line_debug then table.insert(points_se, f_tr.HitPos) end
+					break
+				end
+				fmj_dir = get_reflection(fmj_dir, f_tr.HitNormal)
+				f_tr = my_trace(start_pos, start_pos+fmj_dir*bullet_range, {shooter, f_tr.Entity})
+				tracer(f_tr)
+				fmj_sparks(f_tr.StartPos, f_tr.Normal)
+				sound.Play("FX_RicochetSound.Ricochet", f_tr.StartPos)
+			else
+				-- don't do ricochet. check for penetration instead
+				status = 1
+				if not f_tr.HitWorld then
+					-- for non-world solids, run a filtered trace through ent then an unfiltered trace back to get depth
+					f_tr = my_trace(start_pos, start_pos+fmj_dir*bullet_range, {shooter, f_tr.Entity})
+					b_tr = my_trace(f_tr.HitPos-fmj_dir, start_pos, shooter)
+					final_pos = b_tr.HitPos
+					this_depth = f_tr.StartPos:Distance(final_pos)
+				else
+					-- for world solids, step through world solid, then trace forward and back to set up effects
+					final_pos, this_depth = penetrate_world_solid(start_pos, fmj_dir, MAX_DEPTH-pierced_depth+1, util.PointContents(bdata.Src))
+					f_tr = my_trace(final_pos, final_pos+fmj_dir*bullet_range, shooter)
+					b_tr = my_trace(final_pos+fmj_dir, final_pos-fmj_dir*2, shooter)
+				end
+
+				-- check depth limit
+				if hitting:IsPlayer() or hitting:IsRagdoll() then
+					this_depth = this_depth / 5
+				end
+				if this_depth + pierced_depth > MAX_DEPTH then 
+					if log_debug then print("\tPen exit", "Depth limit") end
+					if line_debug then table.insert(points_se, final_pos) end
+					break 
+				end
+				pierced_depth = pierced_depth + this_depth
+				if log_debug then print("\tPen depth ", this_depth) end
+				if line_debug then table.insert(points_se, final_pos) end
+
+				-- post-penetration bullet exit effects
+				impact(b_tr)
+				tracer(f_tr)
+				--fmj_sparks(b_tr.HitPos + b_tr.Normal * 5, -b_tr.Normal) -- sparks originate slightly inside of surface; looks better
+				fmj_sparks(b_tr.HitPos + b_tr.Normal * 5, fmj_dir) -- sparks originate slightly inside of surface; looks better
+	
+			end
+
+			-- final penetration/ricochet bullet contact. Effects, damage, force 
+			if f_tr.Entity == NULL or f_tr.HitSky then
+				if log_debug then print("\tPen exit", "Bullet exited world") end
 				if line_debug then table.insert(points_se, f_tr.HitPos) end
 				break
 			end
-			fmj_dir = get_reflection(fmj_dir, f_tr.HitNormal)
-			f_tr = my_trace(start_pos, start_pos+fmj_dir*bullet_range, {shooter, f_tr.Entity})
-			tracer(f_tr)
-			fmj_sparks(f_tr.StartPos, f_tr.Normal)
-			sound.Play("FX_RicochetSound.Ricochet", f_tr.StartPos)
-		else
-			-- don't do ricochet. check for penetration instead
-			if not f_tr.HitWorld then
-				-- for non-world solids, run a filtered trace through ent then an unfiltered trace back to get depth
-				f_tr = my_trace(start_pos, start_pos+fmj_dir*bullet_range, {shooter, f_tr.Entity})
-				b_tr = my_trace(f_tr.HitPos-fmj_dir, start_pos, shooter)
-				final_pos = b_tr.HitPos
-				this_depth = f_tr.StartPos:Distance(final_pos)
-			else
-				-- for world solids, step through world solid, then trace forward and back to set up effects
-				final_pos, this_depth = penetrate_world_solid(start_pos, fmj_dir, MAX_DEPTH-pierced_depth+1, util.PointContents(bdata.Src))
-				f_tr = my_trace(final_pos, final_pos+fmj_dir*bullet_range, shooter)
-				b_tr = my_trace(final_pos+fmj_dir, final_pos-fmj_dir*2, shooter)
+			impact(f_tr)
+			bullet_hit(f_tr.Entity, f_tr, bdata, pierced_depth/MAX_DEPTH, status)
+			if f_tr.Entity:GetClass() == "func_breakable_surf" then
+				f_tr.Entity:Fire("Shatter")
 			end
-
-			-- check depth limit
-			if hitting:IsPlayer() or hitting:IsRagdoll() then
-				this_depth = this_depth / 5
-			end
-			if this_depth + pierced_depth > MAX_DEPTH then 
-				if log_debug then print("\tPen exit", "Depth limit") end
-				if line_debug then table.insert(points_se, final_pos) end
-				break 
-			end
-			pierced_depth = pierced_depth + this_depth
-			if log_debug then print("\tPen depth ", this_depth) end
-			if line_debug then table.insert(points_se, final_pos) end
-
-			-- post-penetration bullet exit effects
-			impact(b_tr)
-			fmj_sparks(b_tr.HitPos+b_tr.Normal*5, -b_tr.Normal) -- sparks originate slightly inside of surface; looks better
 
 		end
 
-		-- final penetration/ricochet bullet contact. Effects, damage, force 
-		if f_tr.Entity == NULL or f_tr.HitSky then
-			if log_debug then print("\tPen exit", "Bullet exited world") end
-			if line_debug then table.insert(points_se, f_tr.HitPos) end
-			break
-		end
-		impact(f_tr)
-		bullet_hit(f_tr.Entity, f_tr, bdata, pierced_depth/MAX_DEPTH)
-		if f_tr.Entity:GetClass() == "func_breakable_surf" then
-			f_tr.Entity:Fire("Shatter")
-		end
+		if log_debug then print("\tPierced depth: ", pierced_depth, MAX_DEPTH, '\n') end
+		if line_debug then send_points_se(points_se) end
 
-	end
+		return true
 
-	if log_debug then print("\tPierced depth: ", pierced_depth, MAX_DEPTH, '\n') end
-	if line_debug then send_points_se(points_se) end
-
-	return true
+	--end)
 end
 
+for i,ply in ipairs(player.GetAll()) do
+	ply:PrintMessage(ply:Nick())
+end
