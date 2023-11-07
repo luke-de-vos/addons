@@ -301,6 +301,13 @@ if SERVER then
 
 		while true do
 
+			-- count traces
+			traceno = traceno + 1
+			if traceno > max_traces then 
+				if fmj_log then print("\tPen exit", "Trace limit", max_traces) end
+				break 
+			end
+
 			fmj_dir = f_tr.Normal
 			start_pos = f_tr.HitPos
 			hitting = f_tr.Entity
@@ -318,7 +325,8 @@ if SERVER then
 				fmj_sparks(f_tr.StartPos, f_tr.Normal)
 				sound.Play("FX_RicochetSound.Ricochet", f_tr.StartPos)
 			else
-				-- don't do ricochet. check for penetration instead
+				---- attempt penetrate
+				-- 
 				status = 1
 				if not f_tr.HitWorld then
 					-- for non-world solids, run a filtered trace through ent then an unfiltered trace back to get depth
@@ -330,47 +338,35 @@ if SERVER then
 					-- for world solids, step through world solid, then trace forward and back to set up effects
 					final_pos, this_depth = penetrate_world_solid(start_pos, fmj_dir, fmj_depth_limit-pierced_depth+1, util.PointContents(bdata.Src))
 					update_trace(f_tr, final_pos, final_pos+fmj_dir*bullet_range, shooter)
-					update_trace(b_tr, final_pos+fmj_dir, final_pos-fmj_dir*2, shooter)
+					update_trace(b_tr, final_pos+fmj_dir, final_pos-fmj_dir*5, shooter)
 				end
 
 				-- check depth limit
 				if hitting:IsPlayer() or hitting:IsRagdoll() then
 					this_depth = this_depth / 5
 				end
-				if pierced_depth + this_depth > fmj_depth_limit then 
+				if pierced_depth + this_depth <= fmj_depth_limit then -- successful penetration
+					pierced_depth = pierced_depth + this_depth
+					if fmj_log then print("\tPen depth ", this_depth); table.insert(points_se, final_pos) end
+					fmj_impact(b_tr)
+					fmj_tracer(f_tr)
+					if !(hitting:IsPlayer() or hitting:IsRagdoll()) then
+						--fmj_sparks(b_tr.HitPos + b_tr.Normal * 5, -b_tr.Normal) -- sparks originate slightly inside of surface; looks better
+						fmj_sparks(b_tr.HitPos + b_tr.Normal * 5, fmj_dir) -- sparks originate slightly inside of surface. looks better
+					end
+				else
 					if fmj_log then print("\tPen exit", "Depth limit"); table.insert(points_se, final_pos) end
 					break 
 				end
-				pierced_depth = pierced_depth + this_depth -- this should be here. not above.
-				
-				if fmj_log then print("\tPen depth ", this_depth); table.insert(points_se, final_pos) end
-
-				-- post-penetration bullet exit effects
-				fmj_impact(b_tr)
-				fmj_tracer(f_tr)
-				if !(hitting:IsPlayer() or hitting:IsRagdoll()) then
-					--fmj_sparks(b_tr.HitPos + b_tr.Normal * 5, -b_tr.Normal) -- sparks originate slightly inside of surface; looks better
-					fmj_sparks(b_tr.HitPos + b_tr.Normal * 5, fmj_dir) -- sparks originate slightly inside of surface. looks better
-				end
 			end
 
-			-- final penetration/ricochet bullet contact. Effects, damage, force 
+			-- receiving penetration/ricochet bullet contact. Effects, damage, force 
 			if f_tr.Entity == NULL or f_tr.HitSky then
 				if fmj_log then print("\tPen exit", "Bullet exited world"); table.insert(points_se, f_tr.HitPos) end
-				break
+				break 
 			end
 			fmj_impact(f_tr)
 			bullet_hit(f_tr.Entity, f_tr, bdata, pierced_depth/fmj_depth_limit, status)
-			-- if f_tr.Entity:GetClass() == "func_breakable_surf" then
-			-- 	f_tr.Entity:Fire("Shatter")
-			-- end
-
-			-- count traces
-			traceno = traceno + 1
-			if traceno >= max_traces then 
-				if fmj_log then print("\tPen exit", "Trace limit", max_traces) end
-				break 
-			end
 
 		end
 
