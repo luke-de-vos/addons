@@ -322,6 +322,7 @@ end
 -- colored chat
 if SERVER then 
     util.AddNetworkString( "SendColouredChat" )
+    -- send colored chat to all players
     function SendColouredChat( text )
         net.Start( "SendColouredChat" )
             net.WriteTable( Color( 255, 255, 0, 255 ) )
