@@ -4,7 +4,7 @@ print("Executed lua: " .. debug.getinfo(1,'S').source)
 if SERVER then
 	hook.Add("ScalePlayerDamage", "arm_damage3", function(ply, hitgroup, dmginfo) 
 		if (hitgroup == HITGROUP_LEFTARM or hitgroup == HITGROUP_RIGHTARM) then
-			dmginfo:ScaleDamage(1.85) -- set arm damage equal to body damage
+			dmginfo:ScaleDamage(1.845) -- set arm damage equal to body damage
 		 end
 	end)
 end
@@ -37,12 +37,6 @@ if SERVER then
 	--hook.Remove("WeaponEquip","geag_alert")
 end
 
--- hup!
-hook.Add("OnKeyPressed???", "hup_hook", function(ply)
-    sound.Play("hup", ply:GetPos()+Vector(0,0,70), 100, 100, 100)
-end)
-
-
 -- hitmarker sound
 if SERVER then
     resource.AddFile("sound/hit.wav")
@@ -63,8 +57,8 @@ if CLIENT then
 end
 
 
--- speedometer
 if CLIENT then
+	-- show speed
 	local recent_max = 0
 	local recent_max_set_at = 0
 	local recent_window = 5 --seconds
@@ -90,9 +84,371 @@ if CLIENT then
 			end
 		end
 	end)
+
+	-- show distance to target
+	hook.Add("DrawOverlay", "dist_to_target_hook", function()
+		if IsValid(LocalPlayer()) and input.IsMouseDown(MOUSE_RIGHT) then
+			local trace = LocalPlayer():GetEyeTrace()
+			if !trace.HitSky then
+				local dist = math.Round(LocalPlayer():EyePos():Distance(trace.HitPos) / 12, 1)
+				draw.DrawText(dist.." ft", "DermaDefault", 288, 87, Color( 0, 0, 0, 255 ), TEXT_ALIGN_LEFT)
+				draw.DrawText(dist.." ft", "DermaDefault", 287, 86, Color( 255, 255, 255, 255 ), TEXT_ALIGN_LEFT)
+			else
+				draw.DrawText("-- ft", "DermaDefault", 288, 87, Color( 0, 0, 0, 255 ), TEXT_ALIGN_LEFT)
+				draw.DrawText("-- ft", "DermaDefault", 287, 86, Color( 255, 255, 255, 255 ), TEXT_ALIGN_LEFT)
+			end
+		end
+	end)
+end
+
+-- cleanup command
+hook.Add("PlayerSay", "custom_command_remove_ents", function(sender, text, teamChat)
+	if sender:GetUserGroup() ~= "user" then
+		if text == "!cleanup" then
+			for i,ent in ipairs(ents.GetAll()) do
+				local cla = ent:GetClass()
+				if cla == "prop_physics" or cla == "prop_dynamic" then
+					ent:Remove()
+				elseif ent:IsWeapon() and !ent:GetOwner():IsValid() then
+					ent:Remove()
+				end
+			end
+		end
+	end
+end)
+
+
+-- -- HUP
+-- resource.AddFile("sound/h1.mp3")
+-- resource.AddFile("sound/h2.mp3")
+-- local hup_table = {"h1.mp3", "h2.mp3"}
+-- local hup_message_name = "hup_message"
+-- if CLIENT then
+-- 	local hook_type= "Think"
+-- 	local hook_name = "hup_think"
+-- 	local next_hup_time = 0
+-- 	local hup_cooldown = 1 --seconds
+-- 	hook.Add(hook_type, hook_name, function()
+-- 		if input.IsButtonDown(KEY_H) then
+-- 			if CurTime() > next_hup_time then
+-- 				net.Start(hup_message_name)
+-- 					net.WriteInt(LocalPlayer():EntIndex(), 16)
+-- 					net.SendToServer()
+-- 				next_hup_time = CurTime() + hup_cooldown
+-- 			end
+-- 		end
+-- 	end)
+-- 	--hook.Remove(hook_type, hook_name)
+-- end
+-- if SERVER then
+-- 	util.AddNetworkString(hup_message_name)
+-- 	net.Receive(hup_message_name, function()
+-- 		Entity(net.ReadInt(16)):EmitSound(hup_table[math.random(#hup_table)], 60, 100, 1)
+-- 	end)
+-- end
+
+
+-- MAKE EXPLOSION
+if SERVER then
+	function CreateExplosionAtPosition(pos)
+		-- Check if the provided position is valid
+		if not pos or not isvector(pos) then
+			print("Invalid position.")
+			return
+		end
+
+		-- Create an explosion entity
+		local explosion = ents.Create("env_explosion") 
+		if not IsValid(explosion) then 
+			print("Failed to create explosion.")
+			return
+		end
+
+		-- Set explosion attributes
+		explosion:SetPos(pos)  
+		explosion:Spawn()
+
+		-- Configure the explosion
+		explosion:SetKeyValue("iMagnitude","200") 
+
+		-- Trigger the explosion
+		explosion:Fire("Explode", "", 0)
+		explosion:EmitSound("weapon_AWP.Single", 400, 400 ) 
+	end
+
+	-- Example usage:
+	-- Replace Vector(0, 0, 0) with your desired position
 end
 
 
+
+-- SFX FOR KNIFE KILLS
+if SERVER then
+	local knife_stab_sound = Sound("physics/flesh/flesh_strider_impact_bullet1.wav")
+    hook.Add("DoPlayerDeath", "SoundForKnifeKill", function(victim, attacker, dmginfo)
+		local inflictor = dmginfo:GetInflictor()
+		if IsValid(inflictor) then
+			if inflictor.ClassName == "weapon_ttt_knife" or inflictor.ClassName == "ttt_knife_proj" then
+				victim:EmitSound(knife_stab_sound, 62, 120, 1)
+			end
+		end
+    end)
+end
+
+
+
+
+/*
+trail texture options:
+list.Set( "trail_materials", "#trail.plasma", "trails/plasma" )
+list.Set( "trail_materials", "#trail.tube", "trails/tube" )
+list.Set( "trail_materials", "#trail.electric", "trails/electric" )
+list.Set( "trail_materials", "#trail.smoke", "trails/smoke" )
+list.Set( "trail_materials", "#trail.laser", "trails/laser" )
+list.Set( "trail_materials", "#trail.physbeam", "trails/physbeam" )
+list.Set( "trail_materials", "#trail.love", "trails/love" )
+list.Set( "trail_materials", "#trail.lol", "trails/lol" )
+		["ttt_firegrenade_proj"] = true,
+		["ttt_smokegrenade_proj"] = true,
+		["ttt_confgrenade_proj"] = true,
+*/
+
+-- GRENADE TRACERS
+-- when standard grenades are thrown, track the projectile with red laser trail
+if SERVER then
+	local grenadeTypes = {
+		["ttt_frag_proj"] = true,
+		["ttt_firegrenade_proj"] = true,
+		["ttt_smokegrenade_proj"] = true,
+		["ttt_confgrenade_proj"] = true,
+	}
+	hook.Add("OnEntityCreated", "TrackGrenadeThrows", function(ent)
+		if ent:GetClass() == "ttt_frag_proj" then
+			util.SpriteTrail(
+				ent, 0, Color(255, 0, 0), false, 10, 1, 0.3, 1/(10+1)*0.5, "trails/laser"
+			)
+			-- make the grenade beep
+			timer.Create("beep_timer_"..ent:EntIndex(), 0.25, 20, function()
+				if !IsValid(ent) then return end
+				ent:EmitSound("buttons/blip1.wav", 70, 200, 0.8, CHAN_AUTO)
+			end)
+		end
+		if grenadeTypes[ent:GetClass()] then
+			-- play throw sound effect
+			ent:EmitSound("WeaponFrag.Throw", 50, 100, 0.3, CHAN_BODY)
+		end
+	end)
+end
+
+
+-- DROP WEAPON SOUND EFFECT
+if SERVER then
+	hook.Add("PlayerDroppedWeapon", "sfx_drop_hook", function(owner, wep)
+		owner:EmitSound("WeaponFrag.Roll", 20, 120, 0.7, CHAN_AUTO)
+	end)
+end
+
+
+-- print the number of players with each role at the start of each round
+if SERVER then
+	hook.Add("TTTBeginRound", "PrintPlayerRoles", function()
+
+		print("======")
+		print("ROLES")
+		local roleCounts = {}  -- Table to hold the count of each role
+
+		for _, ply in ipairs(player.GetAll()) do
+			if IsValid(ply) then
+				local role = ply:GetRoleString()  -- Assuming GetRoleString gets the role name as a string
+				roleCounts[role] = (roleCounts[role] or 0) + 1  -- Increment the count for this role
+			end
+		end
+
+		-- Print the count of each role
+		for role, count in pairs(roleCounts) do
+			print(count.." "..role)
+		end
+		print("======")
+	end)
+end
+
+
+-- GIVE ME COMMAND
+if SERVER then
+	concommand.Add("giveme", function(ply, cmd, args)
+		if not IsValid(ply) then return end
+		if not ply:IsAdmin() then return end 
+		local weapon_class = args[1]
+		local success = ply:Give(weapon_class)
+		print("giveme "..ply:GetName().." "..weapon_class)
+	end)
+	-- add command to spawn Entity(2) at Entity(1)'s aimvector hitpos
+	concommand.Add("spawnat", function(ply, cmd, args)
+		if not IsValid(ply) then return end
+		if not ply:IsAdmin() then return end 
+		local ent_id = args[1]
+		local ent = Entity(ent_id)
+		ent:EmitSound("WeaponFrag.Roll", 50, 120, 0.7, CHAN_AUTO)
+		ent:SetPos(ply:GetEyeTrace().HitPos)
+		ent:EmitSound("WeaponFrag.Roll", 50, 120, 0.7, CHAN_AUTO)
+	end)
+	
+end
+
+-- halloween boo and scream. only scream enabled, currently, not halloween anymore
+local boo_message_name = "boo_message"
+local scream_message_name = "scream_message"
+if CLIENT then
+	local hook_type = "Think" 
+	local hook_name = "boo_scream_think"
+	-- local next_boo_time = 0
+	-- local boo_cooldown = 5 --seconds
+	local next_scream_time = 0
+	local scream_cooldown = 2 --seconds
+	hook.Add(hook_type, hook_name, function()
+		if input.IsButtonDown(KEY_G) then
+			-- if CurTime() > next_boo_time then
+			-- 	net.Start(boo_message_name)
+			-- 		net.WriteInt(LocalPlayer():EntIndex(), 16)
+			-- 		net.SendToServer()
+			-- 	next_boo_time = CurTime() + boo_cooldown
+			-- end
+		elseif input.IsButtonDown(KEY_H) then 
+			if CurTime() > next_scream_time and LocalPlayer():Alive() then
+				net.Start(scream_message_name)
+					net.WriteInt(LocalPlayer():EntIndex(), 16)
+					net.SendToServer()
+				next_scream_time = CurTime() + scream_cooldown 
+			end
+		end
+	end)
+	--hook.Remove(hook_type, hook_name)
+end
+if SERVER then
+	-- resource.AddFile("sound/ghost_boo.mp3")
+	-- local boo_sound = Sound("ghost_boo.mp3")
+	-- util.AddNetworkString(boo_message_name)
+	-- net.Receive(boo_message_name, function()
+	-- 	Entity(net.ReadInt(16)):EmitSound(boo_sound, 80, 100, 1)
+	-- end)
+	resource.AddFile("sound/scream.mp3")
+	local scream_sound = Sound("scream.mp3")
+	util.AddNetworkString(scream_message_name)
+	net.Receive(scream_message_name, function()
+		Entity(net.ReadInt(16)):EmitSound(scream_sound, 80, 100, 1)
+	end)
+end
+
+
+
+-- if SERVER then
+-- 	-- Global table to hold references to trail entities
+-- 	local trailEntities = {}
+
+-- 	concommand.Add("givetrail", function(ply, cmd, args)
+-- 		local ent = ply:GetActiveWeapon()
+-- 		if not IsValid(ent) then return end  -- Check if entity(1) is valid
+
+-- 		local sw = 10
+-- 		local ew = 1
+-- 		local lifetime = 1.5
+-- 		local attachment_id = 0
+-- 		local trail_name = "trails/laser"
+
+-- 		-- Create and store the trail entity
+-- 		local trail = util.SpriteTrail(
+-- 			ent, attachment_id, Color(255, 0, 0), false, sw, ew, lifetime, 1/(sw+ew)*0.5, trail_name
+-- 		)
+-- 		table.insert(trailEntities, trail)
+-- 	end)
+
+-- 	concommand.Add("cleantrails", function()
+-- 		-- Iterate through and remove all trail entities
+-- 		for _, trail in ipairs(trailEntities) do
+-- 			trail:Remove()
+-- 		end
+-- 		-- Clear the table
+-- 		trailEntities = {}
+-- 	end)
+-- end
+
+
+
+-- -- when a player kills another player with a headshot, play a sound
+-- if SERVER then
+
+-- 	-- create server message for headshot sound
+-- 	util.AddNetworkString("headshot_sound")
+
+-- 	local headshot_sound = Sound("Grenade.Blip")
+-- 	hook.Add("DoPlayerDeath", "SoundForHeadshot", function(victim, attacker, dmginfo)
+-- 		if dmginfo:IsBulletDamage() and victim:LastHitGroup() == HITGROUP_HEAD then
+-- 			-- send message to client to play sound
+-- 			net.Start("headshot_sound")
+-- 			net.Send(attacker)
+-- 		end
+-- 	end)
+-- else
+-- 	net.Receive("headshot_sound", function()
+-- 		timer.Simple(0.1, function()
+-- 			-- play crazy clientside sound
+-- 			sound.Play("", LocalPlayer():EyePos(), 75, 100, 1)
+-- 		end)
+-- 	end)
+-- end
+
+
+/*
+
+
+
+
+-- CHANGE WEAPON PICKUP DISTANCE
+if SERVER then
+	hook.Add("PlayerCanPickupWeapon", "custom_pickup_dist", function(ply, wep)
+		-- if player is pressing e to pickup weapon, allow pickup if within 100 units
+		local wep_dist = wep:GetPos():Distance(ply:GetPos())
+		if ply:KeyDown(IN_USE) then
+			if wep_dist > 100 then
+				return false
+			end
+		else
+			if wep_dist > 20 then
+				return false
+			end
+		end
+	end)
+end
+
+
+-- if CLIENT then
+-- 	local loc = Vector(0,0,0)
+-- 	hook.Add("PostDrawTranslucentRenderables", "show_pos", function()
+-- 		render.DrawWireframeSphere(loc, 20, 20, 5, Color(200, 200, 200), false)
+-- 	end)
+-- end
+
+
+-- if SERVER then
+-- 	util.AddNetworkString("dougies_pickup_sound")
+-- 	hook.Add("WeaponEquip", "send_dougies_pickup_sound", function(weapon, ply)
+-- 		net.Start("dougies_pickup_sound")
+-- 		net.Send(ply)
+-- 		--return true -- Allow the weapon pickup to proceed
+-- 	end)
+-- 	--hook.Remove("WeaponEqiup", "send_dougies_pickup_sound")
+-- else
+-- 	net.Receive("dougies_pickup_sound", function(len)
+-- 		surface.PlaySound("items/ammo_pickup.wav")
+-- 	end)
+-- end
+
+-- when any entity is created, print it to console
+if SERVER then
+	hook.Add("OnEntityCreated", "print_created_ent", function(ent)
+		print(ent)
+	end)
+end
 
 -- DASH
 local DASH_COOLDOWN = 0.75	--seconds
@@ -181,57 +537,5 @@ if CLIENT then
 	end)
 end
 
--- cleanup command
-hook.Add("PlayerSay", "custom_command_remove_ents", function(sender, text, teamChat)
-	if sender:GetUserGroup() ~= "user" then
-		if text == "!cleanup" then
-			for i,ent in ipairs(ents.GetAll()) do
-				local cla = ent:GetClass()
-				if cla == "prop_physics" or cla == "prop_dynamic" then
-					ent:Remove()
-				elseif ent:IsWeapon() and !ent:GetOwner():IsValid() then
-					ent:Remove()
-				end
-			end
-		end
-	end
-end)
 
-
--- HUP
-resource.AddFile("sound/h1.mp3")
-resource.AddFile("sound/h2.mp3")
-local hup_table = {"h1.mp3", "h2.mp3"}
-local hup_message_name = "hup_message"
-if CLIENT then
-	local hook_type= "Think"
-	local hook_name = "hup_think"
-	local next_hup_time = 0
-	local hup_cooldown = 1 --seconds
-	hook.Add(hook_type, hook_name, function()
-		if input.IsButtonDown(KEY_H) then
-			if CurTime() > next_hup_time then
-				net.Start(hup_message_name)
-					net.WriteInt(LocalPlayer():EntIndex(), 16)
-					net.SendToServer()
-				next_hup_time = CurTime() + hup_cooldown
-			end
-		end
-	end)
-	--hook.Remove(hook_type, hook_name)
-end
-if SERVER then
-	util.AddNetworkString(hup_message_name)
-	net.Receive(hup_message_name, function()
-		Entity(net.ReadInt(16)):EmitSound(hup_table[math.random(#hup_table)], 60)
-	end)
-end
-
-
-
-
-
-hook.Add("PlayerDroppedWeapon", "sfx_drop_hook", function(owner, wep)
-	owner:EmitSound("WeaponFrag.Roll")
-end)
-
+*/
