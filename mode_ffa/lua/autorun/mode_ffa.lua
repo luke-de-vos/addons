@@ -76,7 +76,12 @@ if SERVER then
 		-- on pre-kill: award ammo, record victim's held weapon
 		_add_hook("DoPlayerDeath", "ffa_DoPlayerDeath", function(ply, attacker, dmg)
 			-- record what victim was holding when killed
-			died_with[ply:UserID()] = ply:GetActiveWeapon():GetClass()
+			local wep = ply:GetActiveWeapon()
+			if IsValid(wep) then
+				died_with[ply:UserID()] = wep:GetClass()
+			elseif !IsValid(died_with[ply:UserID()]) then
+				died_with[ply:UserID()] = DEFAULT_WEAPON
+			end -- don't update if something already there
 			-- killer gets a mag for current weapon
 			if (attacker:IsPlayer() and attacker:UserID() ~= ply:UserID() ) then 
 				_give_current_ammo(attacker, 1)
@@ -104,6 +109,8 @@ if SERVER then
 			_respawn(victim, RESPAWN_DELAY) 
 		end)	
 
+		RunConsoleCommand("ttt_inno_shop_fallback", "innocent")
+		RunConsoleCommand("ttt_inno_credits_starting", "10")
 		RunConsoleCommand("ttt_debug_preventwin", "1")
 		RunConsoleCommand("ttt_preptime_seconds", "1")
 		RunConsoleCommand("ttt_roundtime_minutes", FFA_ROUND_LEN)
@@ -114,10 +121,12 @@ if SERVER then
 	-- undo ffa_on()
 	function reg_ttt()
 		_drop_hooks()
+		RunConsoleCommand("ttt_inno_credits_starting", "0")
 		RunConsoleCommand("ttt_debug_preventwin", "0")
 		RunConsoleCommand("ttt_preptime_seconds", "25")
 		RunConsoleCommand("ttt_roundtime_minutes", TTT_ROUND_LEN)
 		RunConsoleCommand("ulx", "roundrestart")
+		RunConsoleCommand("ttt_inno_shop_fallback", "DISABLED")
 	end
 end
 
