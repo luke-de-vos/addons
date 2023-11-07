@@ -86,8 +86,10 @@ SWEP.IsHot = false
 SWEP.LastParryTime = 0
 SWEP.LastJumpTime = 0
 
-SWEP.PrimaryRof = 0.75
-SWEP.SecondaryRof = 1.0
+SWEP.trail = nil
+
+SWEP.Primary.Delay = 0.75
+SWEP.SecondaryRof = 1.0 
 SWEP.InterRof = 0.2
 SWEP.ReloadRof = 0.75
 SWEP.NextReloadTime = 0
@@ -99,7 +101,7 @@ SWEP.MeleeDamage = 150
 SWEP.LastDamageTime = CurTime()
 
 local PARRY_WINDOW = 0.2
-local PARRY_THROW_WINDOW = SWEP.PrimaryRof - 0.01
+local PARRY_THROW_WINDOW = SWEP.Primary.Delay - 0.01
 
 local WAND_PROP_PREFIX = "WP"
 local PREFIX_LEN = string.len(WAND_PROP_PREFIX)
@@ -118,9 +120,28 @@ local CLANK_SOUNDS = {
 	"physics/metal/metal_barrel_impact_soft4.wav"
 }
 
+
+
+-- if SERVER then
+
+-- 	CreateConVar("change_prop", 4, FCVAR_NONE, "Maximum number of traces a bullet can make before exiting. Default 7")
+
+-- 	local change_prop = GetConVar("change_prop"):GetInt()
+	
+-- 	-- Callbacks
+-- 	cvars.RemoveChangeCallback("change_prop", "change_prop_callback")
+-- 	cvars.AddChangeCallback("change_prop", function(name, old, new)
+-- 		change_prop = tonumber(new)
+-- 		print("cvar update: ", name, old, change_prop)
+-- 	end, "change_prop_callback")
+
+-- end
+
+
+
 function SWEP:PrimaryAttack()
 	if self:GetNextPrimaryFire() <= CurTime() then
-		self:SetNextPrimaryFire(math.max((CurTime() + self.PrimaryRof), self:GetNextPrimaryFire()))
+		self:SetNextPrimaryFire(math.max((CurTime() + self.Primary.Delay), self:GetNextPrimaryFire()))
 		self:SetNextSecondaryFire(math.max((CurTime() + self.InterRof), self:GetNextSecondaryFire()))
 		self:SetNextReload(math.max((CurTime() + self.InterRof), self.NextReloadTime))
 
@@ -211,9 +232,9 @@ function SWEP:Reload()
 end
 
 function SWEP:ThrowProp(model_file, force_mult, prop_duration, weight_mult)
+	if CLIENT then return end
 	local owner = self:GetOwner()
 	if not owner:IsValid() then return end
-	if CLIENT then return end
 
 	-- prop declaration
 	local magic_prop = ents.Create("prop_physics")
@@ -239,6 +260,9 @@ function SWEP:ThrowProp(model_file, force_mult, prop_duration, weight_mult)
 
 	-- spawn
 	magic_prop:Spawn()
+	-- attach trail to magic_prop
+	local trail = util.SpriteTrail(magic_prop, 0, Color(255,0,0), false, 15, 1, 1, 1/(15+1)*0.5, "trails/laser.vmt")
+	
 	local phys = magic_prop:GetPhysicsObject()
 	if not IsValid(phys) then magic_prop:Remove() return end
  
@@ -329,7 +353,7 @@ if SERVER then
 			_effect("ElectricSpark", vic:GetShootPos() + vic:GetAimVector()*20,2,2,10)
 		end
 		-- update cooldowns
-		att:GetActiveWeapon():SetNextPrimaryFire(CurTime() + wep.PrimaryRof)
+		att:GetActiveWeapon():SetNextPrimaryFire(CurTime() + wep.Primary.Delay)
 		wep:SetNextSecondaryFire(CurTime()+0.18)
 		wep:SetNextPrimaryFire(CurTime()+0.05)
 		wep:SetNextReload(CurTime()+0.1)
@@ -375,6 +399,7 @@ end
 function SWEP:Deploy()
 	if SERVER then
 		if IsValid(self:GetOwner()) then
+			--self.trail = util.SpriteTrail(self:GetOwner(), 0, Color(255,0,0), false, 15, 1, 1, 1/(15+1)*0.5, "trails/laser.vmt")
 			if self:GetOwner():GetRole() != 2 then -- in oddblock, the block holder is assigned Detective (2) role
 				self:GetOwner():SetMaxHealth(100)
 				self:GetOwner():SetHealth(100)
@@ -444,3 +469,5 @@ end
 -- 		i = i+1
 -- 	end
 -- end
+
+

@@ -20,7 +20,9 @@ if SERVER then
 			--player.CreateNextBot("Bot" .. i) -- bots created with this func do not move for some reason
 			RunConsoleCommand("bot") 
 		end
-		RunConsoleCommand("bot_zombie","1")
+		timer.Simple(1, function() 
+			RunConsoleCommand("bot_zombie","1")
+		end)	
 	end
 	-- kick bots
 	function bots_off()

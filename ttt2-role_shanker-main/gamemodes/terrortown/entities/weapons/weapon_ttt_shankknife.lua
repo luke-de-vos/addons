@@ -71,12 +71,6 @@ local ReloadSound = Sound("shank/toldya.wav");
 local DEFAULT_WALK_SPEED = 250
 
 
--- function SWEP:Deploy()
-	-- if CLIENT then
-		-- surface.PlaySound("shank/dontgetshanked.wav")
-	-- end
--- end
-
 function SWEP:PrimaryAttack()
 
     if not (self.Weapon:GetNextPrimaryFire() < CurTime()) then 
@@ -102,7 +96,7 @@ function SWEP:PrimaryAttack()
 				did_stab = true
 				if SERVER then
 					--timer.Simple(0.1, function() self:EmitSound("npc/combine_soldier/vo/slash.wav", 75, 100, 1, CHAN_AUTO) end)
-					hitEnt:Remove()
+					--hitEnt:Remove()
 					_slash_effect(tr.Entity)
 				end
 			elseif hitEnt:IsPlayer() then
@@ -148,14 +142,14 @@ end
 
 function Vanish(ply)
 	print(ply:GetActiveWeapon():GetPrintName())
-	VANISH_TIME = 2 -- seconds
+	local VANISH_TIME = 2 -- seconds
 	ply:SetWalkSpeed(ply:GetWalkSpeed() * 1.8)
 	ply:SetFOV(ply:GetFOV()*1.2, 0.3, ply)
 	splash_effect(ply)
 	ply:SetMaterial("effects/blood") -- make model invisible
 	ply:GetActiveWeapon():SetMaterial("effects/blood")
-	--ply:DrawShadow(false)
-	hook.Add("EntityTakeDamage", ply:EntIndex().."vanish", function(vic, dmg)
+	ply:DrawShadow(false)
+	hook.Add("EntityTakeDamage", ply:SteamID().."vanish", function(vic, dmg)
 		if vic:EntIndex() == ply:EntIndex() then
 			dmg:ScaleDamage(5)
 		end
@@ -170,7 +164,7 @@ end
 
 function Unvanish(ply)
 	ply:SetWalkSpeed(DEFAULT_WALK_SPEED)
-	hook.Remove("EntityTakeDamage", ply:EntIndex().."vanish")
+	hook.Remove("EntityTakeDamage", ply:SteamID().."vanish")
 	if ply:GetMaterial() == "effects/blood" then
 		ply:SetMaterial("") -- make model visible
 		ply:GetActiveWeapon():SetMaterial("")
@@ -195,3 +189,49 @@ function SWEP:OnRemove()
         RunConsoleCommand("lastinv")
 	end
 end
+
+local shanker_weapons = {
+	["weapon_ttt_shankknife"] = true,
+	["weapon_ttt_smokegrenade"] = true,
+	["weapon_ttt_confgrenade"] = true,
+	["weapon_zm_molotov"] = true
+}
+
+hook.Remove("PlayerSwitchWeapon", "RestrictWeaponSwitch")
+
+function SWEP:Deploy()
+	if CLIENT and self:GetOwner() == LocalPlayer() then
+		hook.Add("PreDrawHalos", "AddPlayerOutlines", function()
+			local players = {}
+			for _, ply in ipairs(player.GetAll()) do
+				if !ply:Alive() then continue end
+				if ply == LocalPlayer() then continue end
+				if ply:GetVelocity():Length() > 150 then 
+					table.insert(players, ply)
+				end
+			end
+			halo.Add(players, Color(255, 0, 0, 255), 2, 2, 2, true, true)
+		end)
+	else
+		-- hook.Add("PlayerSwitchWeapon", "RestrictWeaponSwitch", function(ply, oldWep, newWep)
+		-- 	if ply == self:GetOwner() then
+		-- 		if shanker_weapons[newWep:GetClass()] == nil then
+		-- 			return true 
+		-- 		end
+		-- 	end
+		-- end)
+		--hook.Remove("PlayerSwitchWeapon", "RestrictWeaponSwitch")
+	end
+    return true  
+end
+
+function SWEP:Holster()
+	if CLIENT then
+    	hook.Remove("PreDrawHalos", "AddPlayerOutlines")
+	end
+    return true  -- Return true to allow the holstering
+end
+
+hook.Remove("PreDrawHalos", "AddPlayerOutlines")
+
+
