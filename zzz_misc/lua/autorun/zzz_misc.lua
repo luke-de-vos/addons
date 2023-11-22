@@ -118,34 +118,7 @@ hook.Add("PlayerSay", "custom_command_remove_ents", function(sender, text, teamC
 end)
 
 
--- -- HUP
--- resource.AddFile("sound/h1.mp3")
--- resource.AddFile("sound/h2.mp3")
--- local hup_table = {"h1.mp3", "h2.mp3"}
--- local hup_message_name = "hup_message"
--- if CLIENT then
--- 	local hook_type= "Think"
--- 	local hook_name = "hup_think"
--- 	local next_hup_time = 0
--- 	local hup_cooldown = 1 --seconds
--- 	hook.Add(hook_type, hook_name, function()
--- 		if input.IsButtonDown(KEY_H) then
--- 			if CurTime() > next_hup_time then
--- 				net.Start(hup_message_name)
--- 					net.WriteInt(LocalPlayer():EntIndex(), 16)
--- 					net.SendToServer()
--- 				next_hup_time = CurTime() + hup_cooldown
--- 			end
--- 		end
--- 	end)
--- 	--hook.Remove(hook_type, hook_name)
--- end
--- if SERVER then
--- 	util.AddNetworkString(hup_message_name)
--- 	net.Receive(hup_message_name, function()
--- 		Entity(net.ReadInt(16)):EmitSound(hup_table[math.random(#hup_table)], 60, 100, 1)
--- 	end)
--- end
+
 
 
 -- MAKE EXPLOSION
@@ -291,28 +264,36 @@ if SERVER then
 		ent:EmitSound("WeaponFrag.Roll", 50, 120, 0.7, CHAN_AUTO)
 		ent:SetPos(ply:GetEyeTrace().HitPos)
 		ent:EmitSound("WeaponFrag.Roll", 50, 120, 0.7, CHAN_AUTO)
+		-- play spark effect at original pos and hit pos
+		local effectdata = EffectData()
+		effectdata:SetOrigin(ent:GetPos())
+		effectdata:SetStart(ent:GetPos())
+		util.Effect("Sparks", effectdata)
+		effectdata:SetOrigin(ent:GetEyeTrace().HitPos)
+		effectdata:SetStart(ent:GetEyeTrace().HitPos)
+		util.Effect("Sparks", effectdata)
 	end)
 	
 end
 
--- halloween boo and scream. only scream enabled, currently, not halloween anymore
-local boo_message_name = "boo_message"
+-- halloween gobble and scream. only scream enabled, currently, not halloween anymore
+local gobble_message_name = "gobble_message"
 local scream_message_name = "scream_message"
 if CLIENT then
 	local hook_type = "Think" 
-	local hook_name = "boo_scream_think"
-	-- local next_boo_time = 0
-	-- local boo_cooldown = 5 --seconds
+	local hook_name = "gobble_scream_think"
+	local next_gobble_time = 0
+	local gobble_cooldown = 0.5 --seconds
 	local next_scream_time = 0
 	local scream_cooldown = 2 --seconds
 	hook.Add(hook_type, hook_name, function()
 		if input.IsButtonDown(KEY_G) then
-			-- if CurTime() > next_boo_time then
-			-- 	net.Start(boo_message_name)
-			-- 		net.WriteInt(LocalPlayer():EntIndex(), 16)
-			-- 		net.SendToServer()
-			-- 	next_boo_time = CurTime() + boo_cooldown
-			-- end
+			if CurTime() > next_gobble_time and LocalPlayer():Alive() then
+				net.Start(gobble_message_name)
+					net.WriteInt(LocalPlayer():EntIndex(), 16)
+					net.SendToServer()
+				next_gobble_time = CurTime() + gobble_cooldown
+			end
 		elseif input.IsButtonDown(KEY_H) then 
 			if CurTime() > next_scream_time and LocalPlayer():Alive() then
 				net.Start(scream_message_name)
@@ -325,12 +306,12 @@ if CLIENT then
 	--hook.Remove(hook_type, hook_name)
 end
 if SERVER then
-	-- resource.AddFile("sound/ghost_boo.mp3")
-	-- local boo_sound = Sound("ghost_boo.mp3")
-	-- util.AddNetworkString(boo_message_name)
-	-- net.Receive(boo_message_name, function()
-	-- 	Entity(net.ReadInt(16)):EmitSound(boo_sound, 80, 100, 1)
-	-- end)
+	resource.AddFile("sound/gobble1.mp3")
+	local gobble_sound = Sound("gobble1.mp3")
+	util.AddNetworkString(gobble_message_name)
+	net.Receive(gobble_message_name, function()
+		Entity(net.ReadInt(16)):EmitSound(gobble_sound, 80, 100, 1)
+	end)
 	resource.AddFile("sound/scream.mp3")
 	local scream_sound = Sound("scream.mp3")
 	util.AddNetworkString(scream_message_name)
@@ -338,6 +319,205 @@ if SERVER then
 		Entity(net.ReadInt(16)):EmitSound(scream_sound, 80, 100, 1)
 	end)
 end
+
+
+-- print weapon stats to screen
+if CLIENT then
+
+	local stats_keys = {"Damage", "Headshot", "Spread", "Recoil", "ROF", "Ammo Type"}
+	local stats = {}
+
+	local border = 5
+	local shift = 15
+	local box_height = #stats_keys * shift
+
+	local box_title_color = Color(100,100,200,180)
+	local box_body_color = Color(20, 20, 20,135)
+
+	local box_x = nil
+	local box_y = nil
+
+	local yOffset = nil
+
+	-- when local player equips any weapon
+	hook.Add("HUDPaint", "DrawWeaponStats", function()
+		local ply = LocalPlayer()
+		if not IsValid(ply) then return end
+
+		local weapon = ply:GetActiveWeapon()
+		if IsValid(weapon) then
+			stats = {
+				tostring(weapon.Primary.Damage),
+				tostring(weapon.HeadshotMultiplier).."x",
+				tostring(math.Round(math.pow(weapon.Primary.Cone*100, 2) * 3.14, 2)),
+				weapon.Primary.Recoil,
+				tostring(math.Round(1/weapon.Primary.Delay, 2)).." rps",
+				weapon.Primary.Ammo,
+			}
+
+			box_x = ScrW() * 0.8
+			box_y = ScrH() * 0.95 - box_height
+			
+			-- draw boxes
+			surface.SetDrawColor(box_title_color)
+			surface.DrawRect(box_x - border, box_y, 230, shift)
+			surface.SetDrawColor(box_body_color)
+			surface.DrawRect(box_x - border, box_y + shift, 230, box_height + border)
+
+			-- draw text
+			yOffset = shift
+			draw.SimpleText(weapon.ClassName, "TargetID", box_x, box_y + yOffset, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
+			for i, key in ipairs(stats_keys) do
+				yOffset = yOffset + shift
+				draw.SimpleText(key, "TargetID", box_x, box_y + yOffset, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
+				draw.SimpleText(tostring(stats[i]), "TargetID", box_x + 105, box_y + yOffset, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
+			end
+
+		else
+			stats = {}
+		end
+
+
+	end)
+
+
+
+
+	
+end
+
+
+-- gnome game mode
+if SERVER then
+
+	local gnome_model = "models/splinks/gnome_chompski/player_gnome.mdl"
+	local orig_models = {}
+
+	local gnome_view_offset = Vector(0,0,19)
+	local gnome_view_offset_ducked = Vector(0,0,5)
+
+	local function gnomify(ply)
+		ply:SetModel(gnome_model)
+		ply:SetMaxHealth(25)
+		ply:SetHealth(25)
+		ply:SetViewOffset(gnome_view_offset)
+		ply:SetViewOffsetDucked(gnome_view_offset_ducked)
+	end
+
+	concommand.Add("gnomes", function(ply, cmd, args)
+
+		if not IsValid(ply) then return end
+		if not ply:IsAdmin() then return end 
+		local mode = args[1]
+
+		if mode == "on" then
+			print("gnomes on")
+
+			local survivor_id = math.random(#player.GetAll())
+
+			orig_models = {}
+			for i,ply in ipairs(player.GetAll()) do
+				if i != survivor_id then
+					orig_models[ply:SteamID()] = ply:GetModel()
+				end
+			end
+
+			-- prevent gnome from crouching
+			hook.Add("SetupMove", "PreventCrouch", function(ply, moveData, cmd)
+				if ply:KeyDown(IN_DUCK) then
+					if orig_models[ply:SteamID()] != nil then
+						-- If the player is trying to crouch, prevent it by setting the duck state to false
+						moveData:SetButtons(moveData:GetButtons() - IN_DUCK)
+					end
+				end
+			end)
+
+			-- when spawn
+			hook.Add("PlayerSpawn", "gnome_mode_spawn", function(ply)
+				if orig_models[ply:SteamID()] != nil then
+					timer.Simple(0.5, function()
+						gnomify(ply)
+					end)
+				end
+			end)
+
+			-- on round start
+			hook.Add("TTTBeginRound", "gnome_mode", function()
+				for i,ply in ipairs(player.GetAll()) do
+					if orig_models[ply:SteamID()] != nil then
+						ply:ChatPrint("The boys are back in town.")
+						gnomify(ply)
+					else
+						ply:ChatPrint("Gnomes are back. And they're pissed. Survive.")
+					end
+				end
+			end)
+
+			RunConsoleCommand("ttt_roundrestart")
+
+		elseif mode == "off" then
+
+			print("gnomes off")
+
+			hook.Remove("TTTBeginRound", "gnome_mode")
+			hook.Remove("ScalePlayerDamage", "gnome_mode_spawn")
+			hook.Remove("SetupMove", "PreventCrouch")
+
+			for i,ply in ipairs(player.GetAll()) do
+				ply:SetViewOffset(Vector(0,0,64))
+				ply:SetViewOffsetDucked(Vector(0,0,28))
+				if orig_models[ply:SteamID()] != nil then
+					ply:SetModel(orig_models[ply:SteamID()])
+				end
+				ply:SetMaxHealth(100)
+				ply:SetHealth(100)
+			end
+
+			orig_models = {}
+
+			RunConsoleCommand("ttt_roundrestart")
+
+		else
+			print("invalid mode")
+		end
+	end)	
+
+end
+
+
+
+
+
+
+
+-- -- HUP
+-- resource.AddFile("sound/h1.mp3")
+-- resource.AddFile("sound/h2.mp3")
+-- local hup_table = {"h1.mp3", "h2.mp3"}
+-- local hup_message_name = "hup_message"
+-- if CLIENT then
+-- 	local hook_type= "Think"
+-- 	local hook_name = "hup_think"
+-- 	local next_hup_time = 0
+-- 	local hup_cooldown = 1 --seconds
+-- 	hook.Add(hook_type, hook_name, function()
+-- 		if input.IsButtonDown(KEY_H) then
+-- 			if CurTime() > next_hup_time then
+-- 				net.Start(hup_message_name)
+-- 					net.WriteInt(LocalPlayer():EntIndex(), 16)
+-- 					net.SendToServer()
+-- 				next_hup_time = CurTime() + hup_cooldown
+-- 			end
+-- 		end
+-- 	end)
+-- 	--hook.Remove(hook_type, hook_name)
+-- end
+-- if SERVER then
+-- 	util.AddNetworkString(hup_message_name)
+-- 	net.Receive(hup_message_name, function()
+-- 		Entity(net.ReadInt(16)):EmitSound(hup_table[math.random(#hup_table)], 60, 100, 1)
+-- 	end)
+-- end
 
 
 
@@ -356,7 +536,7 @@ end
 -- 		local trail_name = "trails/laser"
 
 -- 		-- Create and store the trail entity
--- 		local trail = util.SpriteTrail(
+-- 		local trail = util.SpriteTrail()
 -- 			ent, attachment_id, Color(255, 0, 0), false, sw, ew, lifetime, 1/(sw+ew)*0.5, trail_name
 -- 		)
 -- 		table.insert(trailEntities, trail)
@@ -374,28 +554,28 @@ end
 
 
 
--- -- when a player kills another player with a headshot, play a sound
--- if SERVER then
+-- when a player kills another player with a headshot, play a sound
+if SERVER then
+	-- create server message for headshot sound
+	util.AddNetworkString("headshot_sound")
 
--- 	-- create server message for headshot sound
--- 	util.AddNetworkString("headshot_sound")
-
--- 	local headshot_sound = Sound("Grenade.Blip")
--- 	hook.Add("DoPlayerDeath", "SoundForHeadshot", function(victim, attacker, dmginfo)
--- 		if dmginfo:IsBulletDamage() and victim:LastHitGroup() == HITGROUP_HEAD then
--- 			-- send message to client to play sound
--- 			net.Start("headshot_sound")
--- 			net.Send(attacker)
--- 		end
--- 	end)
--- else
--- 	net.Receive("headshot_sound", function()
--- 		timer.Simple(0.1, function()
--- 			-- play crazy clientside sound
--- 			sound.Play("", LocalPlayer():EyePos(), 75, 100, 1)
--- 		end)
--- 	end)
--- end
+	local headshot_sound = Sound("Weapon_Crossbow.BoltHitWorld")
+	hook.Add("DoPlayerDeath", "SoundForHeadshot", function(victim, attacker, dmginfo)
+		if dmginfo:IsBulletDamage() and victim:LastHitGroup() == HITGROUP_HEAD then
+			-- send message to client to play sound
+			net.Start("headshot_sound")
+			net.Send(attacker)
+		end
+	end)
+else
+	local headshot_sound = Sound("Weapon_Crossbow.BoltHitWorld")
+	net.Receive("headshot_sound", function()
+		timer.Simple(0.2, function()
+			-- play client sound for headshot. a ping sound
+			sound.Play(headshot_sound, LocalPlayer():GetPos(), 75, 100, 1)
+		end)
+	end)
+end
 
 
 /*
