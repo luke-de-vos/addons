@@ -51,8 +51,8 @@ if SERVER then
 	CreateConVar("fmj_delay", 0, FCVAR_NONE, "Delay in seconds before bullet penetration is applied. 0 = no delay. Default 0", 0, 10)
 	CreateConVar("fmj_depth_limit", 24, FCVAR_NONE, "Maximum depth in inches a bullet can penetrate. Default 24", 0, 120000)
 	CreateConVar("fmj_log", 0, FCVAR_NONE, "Print debug info to console. 0 = no log. Default 0", 0, 1)
-	CreateConVar("ricochet_angle", 20, FCVAR_NONE, "Maximum angle in degrees between bullet and surface normal for a ricochet to occur. Default 20", 0, 360)
-	CreateConVar("ricochet_min_damage", 24, FCVAR_NONE, "Minimum damage in inches a bullet must have to ricochet. Default 24")
+	CreateConVar("ricochet_angle", 15, FCVAR_NONE, "Maximum angle in degrees between bullet and surface normal for a ricochet to occur. Default 20", 0, 360)
+	CreateConVar("ricochet_min_damage", 20, FCVAR_NONE, "Minimum damage in inches a bullet must have to ricochet. Default 1")
 
 	-- Initialization
 	local max_traces = GetConVar("max_traces"):GetInt()
