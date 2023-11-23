@@ -7,61 +7,63 @@ if SERVER then
 	-- config
 	local FFA_ROUND_LEN = 60 -- minutes
 	local RESPAWN_DELAY = 2 -- seconds
-	local TTT_ROUND_LEN = 8
 
-	AddCSLuaFile()
+	-- declare variables in scope shared between ffa on/off functions
+	local orig_preptime = nil
+	local orig_roundtime = nil
+	local orig_credits = nil
+	local orig_debug = nil
+	local orig_shop = nil
+
 	
-	local DEFAULT_WEAPON = "weapon_zm_revolver"
-	local req_weapon = DEFAULT_WEAPON -- DEFAULT. USED UNLESS SPECIFIED IN COMMAND
-	hook.Add("PlayerSay", "custom_commands_ffa", function(sender, text, teamChat)
-		if sender:GetUserGroup() ~= "user" then
-			args = _my_split(text, " ")
-			if args then
-				if args[1] == '!ffa' then
-					if #args > 1 then
-						req_weapon = args[2]
-						if req_weapon == "mywep" and IsValid(sender:GetActiveWeapon()) then
-							req_weapon = sender:GetActiveWeapon():GetClass()
-						end
-					end
-					ffa_on(req_weapon)
-				elseif args[1] == "!ttt" then reg_ttt() 
-				elseif args[1] == "!block" then ffa_on(req_weapon) pups_on() end
-			end
+	-- con command instead
+	concommand.Add("ffa", function(ply, cmd, args)
+		if !IsValid(ply) then return end
+		if !ply:IsAdmin() then return end
+
+		if args[1] == "on" then
+			ffa_on(ply:GetActiveWeapon():GetClass())
+		elseif args[1] == "off" then
+			ffa_off()
+		else
+			print("Invalid argument. Please use 'on' or 'off'.")
 		end
+
 	end)
 	
 
-	-- restart round and begin free for all deags 
+	-- restart round and begin ffa
 	function ffa_on(req_weapon)
-		_drop_hooks()
-		local died_with = {}  -- track what weapon player died with. Equip that weapon on spawn
 
-		_add_hook("PlayerSay", "ffa_chat_to_spawn", function(sender, text, teamChat)
+		if weapons.Get(req_weapon) == nil then
+			print("ffa_on() failed: req_weapon invalid.")
+			return
+		end
+
+		-- allow players to respawn themselves by chatting
+		hook.Add("PlayerSay", "ffa_chat_to_spawn", function(sender, text, teamChat)
 			RunConsoleCommand("ulx", "respawn", sender:Name()) 
 		end)
 
-		-- HOOKS
 		-- assign innocent role to every player
-		_add_hook("TTTBeginRound", "ffa_ForceRole", function()
+		hook.Add("TTTBeginRound", "ffa_ForceRole", function()
 			for i,ply in ipairs(player.GetAll()) do
 				ply:SetRole(0)
 				ply:SetFrags(0)
-				died_with = {}
 			end
 		end)
 
 		-- on spawn: reset kill trackers, gain and equip weapons
-		_add_hook("PlayerLoadout", "ffa_PlayerLoadout", function(ply)
+		hook.Add("PlayerLoadout", "ffa_PlayerLoadout", function(ply)
+
+			-- set role to innocent
 			ply:SetRole(0)
-			local given_weapon = nil
-			--local last_wep = died_with[ply:UserID()]
+
 			-- give weapon
-			if !(ply:Give(req_weapon)) then
-				ply:Give(DEFAULT_WEAPON)
-			end
+			ply:Give(req_weapon)
 			ply:Give("weapon_zm_improvised")
 			ply:Give("weapon_ttt_unarmed")
+			ply:Give("weapon_zm_carry")
 
 			-- equip weapon
 			timer.Simple(0.2, function()
@@ -73,44 +75,45 @@ if SERVER then
 			
 		end)
 		
-		-- on pre-kill: award ammo, record victim's held weapon
-		_add_hook("DoPlayerDeath", "ffa_DoPlayerDeath", function(ply, attacker, dmg)
-			-- record what victim was holding when killed
-			local wep = ply:GetActiveWeapon()
-			if IsValid(wep) then
-				died_with[ply:UserID()] = wep:GetClass()
-			elseif !IsValid(died_with[ply:UserID()]) then
-				died_with[ply:UserID()] = DEFAULT_WEAPON
-			end -- don't update if something already there
-			-- killer gets a mag for current weapon
-			if (attacker:IsPlayer() and attacker:UserID() ~= ply:UserID() ) then 
-				_give_current_ammo(attacker, 1)
-				--attacker:AddFrags(1)
-			end
-			-- do not drop weapons
+		-- on pre-kill: remove weapons so they are not dropped and clutter the map
+		hook.Add("DoPlayerDeath", "ffa_DoPlayerDeath", function(ply, attacker, dmg)
 			if IsValid(ply:GetActiveWeapon()) then ply:GetActiveWeapon():Remove() end
 			for i,ent in ipairs(ply:GetWeapons()) do
 				ent:Remove()
 			end
-			
 		end)
 		
-		-- on kill: play headshot effect, print killfeed, begin respawn
-		_add_hook("PlayerDeath", "ffa_PlayerDeath", function(victim, inflictor, attacker)
+		-- on kill: award frag, print killfeed, prepare respawn
+		hook.Add("PlayerDeath", "ffa_PlayerDeath", function(victim, inflictor, attacker)
+
 			if (attacker:IsPlayer()) then
 				attacker:AddFrags(1)
 				if victim:LastHitGroup() == 1 then
-					if inflictor:GetClass() != 'prop_physics' then
-						--_headshot_effect(victim)
-					end
+					PrintMessage(HUD_PRINTTALK, attacker:GetName().." killed (X) "..victim:GetName())
+				else
+					PrintMessage(HUD_PRINTTALK, attacker:GetName().." killed "..victim:GetName())
 				end
+			else
+				PrintMessage(HUD_PRINTTALK, victim:GetName() .. " died.")
 			end
-			_print_kill(victim, attacker)
-			_respawn(victim, RESPAWN_DELAY) 
-		end)	
+
+			timer.Simple(RESPAWN_DELAY, function()
+				if IsValid(victim) and !victim:Alive() then
+					victim:Spawn()
+				end
+			end)
+
+		end)
+
+		-- record original values of cvars
+		orig_shop = GetConVar("ttt_inno_shop_fallback"):GetString()
+		orig_credits = GetConVar("ttt_inno_credits_starting"):GetString()
+		orig_debug = GetConVar("ttt_debug_preventwin"):GetString()
+		orig_preptime = GetConVar("ttt_preptime_seconds"):GetString()
+		orig_roundtime = GetConVar("ttt_roundtime_minutes"):GetString()
 
 		RunConsoleCommand("ttt_inno_shop_fallback", "innocent")
-		RunConsoleCommand("ttt_inno_credits_starting", "10")
+		RunConsoleCommand("ttt_inno_credits_starting", "99")
 		RunConsoleCommand("ttt_debug_preventwin", "1")
 		RunConsoleCommand("ttt_preptime_seconds", "1")
 		RunConsoleCommand("ttt_roundtime_minutes", FFA_ROUND_LEN)
@@ -119,14 +122,19 @@ if SERVER then
 	end
 
 	-- undo ffa_on()
-	function reg_ttt()
-		_drop_hooks()
-		RunConsoleCommand("ttt_inno_credits_starting", "0")
-		RunConsoleCommand("ttt_debug_preventwin", "0")
-		RunConsoleCommand("ttt_preptime_seconds", "25")
-		RunConsoleCommand("ttt_roundtime_minutes", TTT_ROUND_LEN)
+	function ffa_off()
+		hook.Remove("PlayerSay", "ffa_chat_to_spawn")
+		hook.Remove("TTTBeginRound", "ffa_ForceRole")
+		hook.Remove("PlayerLoadout", "ffa_PlayerLoadout")
+		hook.Remove("DoPlayerDeath", "ffa_DoPlayerDeath")
+		hook.Remove("PlayerDeath", "ffa_PlayerDeath")
+
+		RunConsoleCommand("ttt_inno_shop_fallback", orig_shop)
+		RunConsoleCommand("ttt_inno_credits_starting", orig_credits)
+		RunConsoleCommand("ttt_debug_preventwin", orig_debug)
+		RunConsoleCommand("ttt_preptime_seconds", orig_preptime)
+		RunConsoleCommand("ttt_roundtime_minutes", orig_roundtime)
 		RunConsoleCommand("ulx", "roundrestart")
-		RunConsoleCommand("ttt_inno_shop_fallback", "DISABLED")
 	end
 end
 
