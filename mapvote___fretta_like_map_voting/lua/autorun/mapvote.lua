@@ -3,9 +3,9 @@ MapVote.Config = {}
 
 --Default Config
 MapVoteConfigDefault = {
-    MapLimit = 24,
+    MapLimit = 48,
     TimeLimit = 28,
-    AllowCurrentMap = false,
+    AllowCurrentMap = true,
     EnableCooldown = true,
     MapsBeforeRevote = 3,
     RTVPlayerCount = 3,
