@@ -66,6 +66,7 @@ SWEP.Primary.ClipSize = 0
 SWEP.Primary.DefaultClip = 0
 SWEP.Primary.Automatic = true
 SWEP.Primary.Ammo = "RPG_Round"
+SWEP.Primary.Cone = 0.00
 
 SWEP.Secondary.ClipSize	= 0
 SWEP.Secondary.DefaultClip = 0
