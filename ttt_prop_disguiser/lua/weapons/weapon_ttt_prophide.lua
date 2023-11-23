@@ -45,7 +45,7 @@ SWEP.Primary.Delay 		= 2 -- Time limit after undisguising until next disguise
 SWEP.Secondary.Delay	= 2 -- The exact opposite of that ^
 
 SWEP.DisguiseProp 		= Model("models/props_c17/oildrum001.mdl") -- Default disguise model
-SWEP.DisguiseTime 		= 60 -- How long, seconds, for the player to be disguised
+SWEP.DisguiseTime 		= 25 -- How long, seconds, for the player to be disguised
 SWEP.DisguiseHealth 	= 50 -- Health for the disguised prop to have. Works with about half the models
 
 SWEP.MaxRadius			= 100 -- Max radius of a chosen prop. If its bigger than the player cannot use it
