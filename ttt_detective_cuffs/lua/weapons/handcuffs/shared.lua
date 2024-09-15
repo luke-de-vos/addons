@@ -179,6 +179,10 @@ function SWEP:PrimaryAttack(ply)
 			ply:SetNWBool( "FrozenYay", true )
 			if not IsValid(ply) or not ply:IsPlayer() then return end
 			for k, v in pairs( ply:GetWeapons() ) do
+				-- if the weapon is the necromancer's defib, do not drop it
+				if v:GetClass() == "weapon_ttth_necro_defi" then
+					continue
+				end
 				ply:DropWeapon( v )
 				local class = v:GetClass()
 				if SERVER then
