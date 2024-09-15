@@ -131,8 +131,8 @@ if SERVER then
 		[MAT_WARPSHIELD] = 2,
 		[MAT_DIRT] = 2.2,
 		[MAT_SAND] = 2.5,
-		[MAT_METAL] = 3,
-		[MAT_CONCRETE] = 10
+		[MAT_METAL] = 5,
+		[MAT_CONCRETE] = 5
 	}
 
 	-- math helpers
