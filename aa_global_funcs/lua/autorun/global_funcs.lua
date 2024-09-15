@@ -8,7 +8,6 @@ if SERVER then
             timer.Simple(delay, function() 
                 if IsValid(ply) then
                     RunConsoleCommand("ulx", "respawn", ply:Name()) 
-                    timer.Simple(0.2, function() ply:SetHealth(ply:GetMaxHealth()) end)
                 end
             end)
         end
@@ -154,7 +153,7 @@ if SERVER then
         effect:SetStart(pos)
         effect:SetOrigin(pos)
         effect:SetScale(1)
-        util.Effect("cball_explode", effect, true, true)
+        util.Effect("ccamera_explode", effect, true, true)
     end
 
     function _slash_effect(victim)
@@ -182,142 +181,10 @@ if SERVER then
     end
 
 
-
-
-
-
-
-
-
-    
-
-
-    local function place_cam_ent()
-        local cam_ent = ents.Create("prop_dynamic")
-        cam_ent:SetModel("models/error.mdl")
-        cam_ent:Spawn()
-        cam_ent:SetMoveType(MOVETYPE_FLY) --MOVETYPE_NONE
-        cam_ent:SetRenderMode(RENDERMODE_NONE)
-        cam_ent:SetSolid(SOLID_NONE)
-        return cam_ent
-    end
-
-    local function watch_cam(cam_ent, focus_ent, slo_scale, duration)
-        -- update player povs
-        for i,ply in ipairs(player.GetAll()) do
-            if ply:Nick() == focus_ent:Nick() then continue end
-            ply:SetViewEntity(cam_ent)
-            ply:Spectate(OBS_MODE_ROAMING)
-		    ply:SpectateEntity(focus_ent)
-            ply:CrosshairDisable()
-        end
-        timer.Simple(0.05, function() -- sliiight delay. Looks better
-            game.SetTimeScale(slo_scale)
-            -- revert after duration
-            timer.Simple(duration * slo_scale, function()
-                game.SetTimeScale(1.0)
-                for i,ply in ipairs(player.GetAll()) do
-                    ply:SetViewEntity(ply)
-                    ply:UnSpectate()
-                    ply:DrawViewModel(true)
-                    ply:DrawWorldModel(true)
-                    ply:CrosshairEnable()
-                end
-                cam_ent:Remove()
-            end)
-        end)
-    end
-
-    function _highlight_kill(victim, attacker, slo_scale, duration)
-        -- make camera ent and put in place
-        local cam_ent = place_cam_ent()
-        local vp = victim:GetPos()
-        local ap = attacker:GetPos()
-        local offset = _normalize_vec((vp - ap), 100)
-        local cp = vp + offset + Vector(0,0,10)
-        --cam_ent:SetPos(cp)
-        --cam_ent:SetAngles(((ap - cp + Vector(0,0,65))):Angle()) -- x-y, gives angle from y to x
-        watch_cam(cam_ent, attacker, slo_scale, duration)
-    end
-
-
-
-
-
-    function _new_highlight(victim, attacker, slo_scale, duration)
-        game.SetTimeScale(slo_scale)
-        --victim:SpectateEntity(attacker)
-        --victim:SetObserverMode(OBS_MODE_DEATHCAM)
-
-        for i,ply in ipairs(player.GetAll()) do
-            ply:SetViewEntity(victim)
-        end
-
-        -- revert
-        timer.Simple(duration * slo_scale, function()
-            game.SetTimeScale(1.0)
-            for i,ply in ipairs(player.GetAll()) do
-                ply:SetViewEntity(ply)
-                ply:UnSpectate()
-                --ply:Spawn()
-            end
-        end)
-
-    end
-
-    hook.Add("PlayerDeath","do_slow_mo", function(vic, inflictor, attacker)
-        --_highlight_kill(vic, attacker, 0.25, 4)
-        timer.Simple(0.1, function()
-            _new_highlight(vic, attacker, 0.5, 3)
-        end)
-    end)
-    hook.Remove("PlayerDeath","do_slow_mo")
-
-    hook.Add("EntityFireBullets", "follow_bullet", function(shooter, bdata)
-        local slo_scale = 0.1
-        local duration = 3
-        game.SetTimeScale(slo_scale)
-        cam_ent = place_cam_ent()
-        cam_ent:SetAngles(shooter:GetAimVector():Angle())
-        cam_ent:SetPos(shooter:GetShootPos())
-        shooter:SetViewEntity(cam_ent)
-        shooter:SetObserverMode(OBS_MODE_FIXED)
-        --cam_ent:ApplyForceCenter(Vector(0,0,100))
-        cam_ent:SetVelocity(shooter:GetAimVector()*1000)
-        print('shot')
-        timer.Simple(duration * slo_scale, function()
-            print('x')
-            game.SetTimeScale(1.0)
-            if IsValid(cam_ent) then
-                cam_ent:Remove()
-                shooter:SetObserverMode(OBS_MODE_NONE)
-                shooter:SetViewEntity(shooter)
-                shooter:UnSpectate()
-            end
-        end)
-    end)
-    hook.Remove("EntityFireBullets","follow_bullet")
-
-    --Entity(1):SetObserverMode(OBS_MODE_NONE)
-    --Entity(1):SetObserverMode(OBS_MODE_NONE)
-    --Entity(1):SpectateEntity(Entity(1))
-    --Entity(1):SetObserverMode(OBS_MODE_FIXED)
-
-    --Entity(1):SetViewEntity(Entity(1))
-    --Entity(1):SetObserverMode(OBS_MODE_DEATHCAM)
-
-    --Entity(1):UnSpectate()
-    --Entity(1):SetViewEntity(Entity(1))
-
-
-
-
-    --Entity(2):SetViewEntity(Entity(1))
-
-
-
-
 end
+
+
+
 
 -- colored chat
 if SERVER then 
@@ -340,6 +207,26 @@ if CLIENT then
     net.Receive( "SendColouredChat", ReceiveColouredChat )
 end
 
+-- colored chat to one player
+if SERVER then 
+    util.AddNetworkString( "SendColouredChat1" )
+    -- send colored chat to all players
+    function SendColouredChat1( ply, text, color ) -- color e.g. Color(255,0,0,255)
+        net.Start( "SendColouredChat1" )
+            net.WriteTable( color )
+            net.WriteString( text )
+        net.Send(ply)
+    end
+end
+
+if CLIENT then 
+    function ReceiveColouredChat()
+        local color = net.ReadTable()
+        local str = net.ReadString()
+        chat.AddText( color, str )
+    end
+    net.Receive( "SendColouredChat1", ReceiveColouredChat )
+end
 
 
 
@@ -370,4 +257,43 @@ local function see_table(t)
         print(x,y)
     end
     print()
+end
+
+
+
+
+-- loading bar
+if CLIENT then
+    local isDrawing, startTime, duration
+
+    -- Function to start the loading bar
+    function StartLoadingBar(loadDuration)
+        duration = loadDuration
+        startTime = CurTime()
+        isDrawing = true
+    end
+
+    hook.Add("HUDPaint", "DrawSimpleLoadingBar", function()
+        if not isDrawing then return end
+
+        local scrW = ScrW()
+        local scrH = ScrH() + 120
+        local barWidth = 150
+        local barHeight = 15
+        local progress = math.Clamp((CurTime() - startTime) / duration, 0, 1)
+
+        -- Stop drawing when the loading is complete
+        if progress >= 1 then
+            isDrawing = false
+        end
+
+        -- Drawing the background of the loading bar
+        draw.RoundedBox(4, (scrW / 2) - (barWidth / 2), (scrH / 2) - (barHeight / 2), barWidth, barHeight, Color(50, 50, 50, 200))
+
+        -- Drawing the filled part of the loading bar
+        draw.RoundedBox(4, (scrW / 2) - (barWidth / 2), (scrH / 2) - (barHeight / 2), barWidth * progress, barHeight, Color(100, 200, 100, 200))
+    end)
+
+    -- Example usage: Start the loading bar for 5 seconds
+    StartLoadingBar(5)
 end
