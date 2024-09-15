@@ -1,3 +1,53 @@
+-- display game mode at top of screen
+if SERVER then
+	util.AddNetworkString("ffa_power_message")
+
+	function ffa_show_game_mode(status)
+		net.Start("ffa_power_message")
+			net.WriteInt(status, 32)
+		net.Broadcast()
+	end
+
+elseif CLIENT then
+	local function ffa_show_game_mode(status)
+	
+		if status == 1 then
+			-- prepare text to display
+			local text = "FFA"
+			local font = "TargetID"
+			local textColor = Color(255, 255, 255, 255) -- White color
+
+			surface.SetFont(font)
+			local textWidth, textHeight = surface.GetTextSize(text)
+			local x = ScrW() / 2 - textWidth / 2
+			local y = 50 -- Adjust this value to move the text up or down
+
+			-- prepare box
+			local boxWidth = textWidth + 11
+			local boxHeight = textHeight + 10
+			local boxX = x - 5
+			local boxY = y - 5
+
+			-- display prepared UI elements
+			hook.Add("HUDPaint", "ffa_print_game_mode", function()
+				draw.RoundedBox(0, boxX, boxY, boxWidth, boxHeight, Color(0, 0, 0, 200))
+				draw.SimpleText(text, font, x, y, textColor, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+			end)
+
+		elseif status == 0 then
+			hook.Remove("HUDPaint", "ffa_print_game_mode")
+
+		else
+			print("show_game_mode: invalid argument, must be 0 or 1")
+
+		end
+	end
+
+	net.Receive("ffa_power_message", function()
+		local status = net.ReadInt(32)
+		ffa_show_game_mode(status)
+	end)
+end
 
 if SERVER then
 
@@ -5,16 +55,11 @@ if SERVER then
 	print("Executed lua: " .. debug.getinfo(1,'S').source)
 
 	-- config
-	local FFA_ROUND_LEN = 60 -- minutes
 	local RESPAWN_DELAY = 2 -- seconds
 
 	-- declare variables in scope shared between ffa on/off functions
 	local orig_preptime = nil
 	local orig_roundtime = nil
-	local orig_credits = nil
-	local orig_debug = nil
-	local orig_shop = nil
-
 	
 	-- con command instead
 	concommand.Add("ffa", function(ply, cmd, args)
@@ -45,10 +90,12 @@ if SERVER then
 			RunConsoleCommand("ulx", "respawn", sender:Name()) 
 		end)
 
-		-- assign innocent role to every player
+		-- assign gamer role to every player
 		hook.Add("TTTBeginRound", "ffa_ForceRole", function()
 			for i,ply in ipairs(player.GetAll()) do
-				ply:SetRole(0)
+				if ply:GetRoleString() != "gamer" then	
+					RunConsoleCommand("ulx", "force", ply:Nick(), "gamer")
+				end
 				ply:SetFrags(0)
 			end
 		end)
@@ -56,8 +103,10 @@ if SERVER then
 		-- on spawn: reset kill trackers, gain and equip weapons
 		hook.Add("PlayerLoadout", "ffa_PlayerLoadout", function(ply)
 
-			-- set role to innocent
-			ply:SetRole(0)
+			-- set role to gamer
+			if ply:GetRoleString() != "gamer" then
+				RunConsoleCommand("ulx", "force", ply:Nick(), "gamer")
+			end
 
 			-- give weapon
 			ply:Give(req_weapon)
@@ -77,10 +126,7 @@ if SERVER then
 		
 		-- on pre-kill: remove weapons so they are not dropped and clutter the map
 		hook.Add("DoPlayerDeath", "ffa_DoPlayerDeath", function(ply, attacker, dmg)
-			if IsValid(ply:GetActiveWeapon()) then ply:GetActiveWeapon():Remove() end
-			for i,ent in ipairs(ply:GetWeapons()) do
-				ent:Remove()
-			end
+			ply:StripWeapons()
 		end)
 		
 		-- on kill: award frag, print killfeed, prepare respawn
@@ -98,42 +144,45 @@ if SERVER then
 			end
 
 			timer.Simple(RESPAWN_DELAY, function()
-				if IsValid(victim) and !victim:Alive() then
-					victim:Spawn()
+				if IsValid(victim) then
+					RunConsoleCommand("ulx", "respawn", victim:Nick())
+				else
+					print("ffa_PlayerDeath() failed: victim invalid or alive.")
 				end
 			end)
 
 		end)
 
-		-- record original values of cvars
-		orig_shop = GetConVar("ttt_inno_shop_fallback"):GetString()
-		orig_credits = GetConVar("ttt_inno_credits_starting"):GetString()
-		orig_debug = GetConVar("ttt_debug_preventwin"):GetString()
-		orig_preptime = GetConVar("ttt_preptime_seconds"):GetString()
-		orig_roundtime = GetConVar("ttt_roundtime_minutes"):GetString()
+		-- -- record original values of cvars
+		-- orig_preptime = GetConVar("ttt_preptime_seconds"):GetString()
+		-- orig_roundtime = GetConVar("ttt_roundtime_minutes"):GetString()
 
-		RunConsoleCommand("ttt_inno_shop_fallback", "innocent")
-		RunConsoleCommand("ttt_inno_credits_starting", "99")
 		RunConsoleCommand("ttt_debug_preventwin", "1")
 		RunConsoleCommand("ttt_preptime_seconds", "1")
-		RunConsoleCommand("ttt_roundtime_minutes", FFA_ROUND_LEN)
+		RunConsoleCommand("ttt_roundtime_minutes", "60")
+
+		ffa_show_game_mode(1)
 		RunConsoleCommand("ulx", "roundrestart")
 		
 	end
 
 	-- undo ffa_on()
 	function ffa_off()
+
+		-- remove hooks
 		hook.Remove("PlayerSay", "ffa_chat_to_spawn")
 		hook.Remove("TTTBeginRound", "ffa_ForceRole")
 		hook.Remove("PlayerLoadout", "ffa_PlayerLoadout")
 		hook.Remove("DoPlayerDeath", "ffa_DoPlayerDeath")
 		hook.Remove("PlayerDeath", "ffa_PlayerDeath")
 
-		RunConsoleCommand("ttt_inno_shop_fallback", orig_shop)
-		RunConsoleCommand("ttt_inno_credits_starting", orig_credits)
-		RunConsoleCommand("ttt_debug_preventwin", orig_debug)
-		RunConsoleCommand("ttt_preptime_seconds", orig_preptime)
-		RunConsoleCommand("ttt_roundtime_minutes", orig_roundtime)
+		-- RunConsoleCommand("ttt_preptime_seconds", orig_preptime)
+		-- RunConsoleCommand("ttt_roundtime_minutes", orig_roundtime)
+		RunConsoleCommand("ttt_preptime_seconds", "25")
+		RunConsoleCommand("ttt_roundtime_minutes", "8")
+
+		ffa_show_game_mode(0)
+		RunConsoleCommand("ttt_debug_preventwin", "0")
 		RunConsoleCommand("ulx", "roundrestart")
 	end
 end
