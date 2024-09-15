@@ -13,29 +13,32 @@ end
 if SERVER then
 	function spawn_geag() 
 		local options = {}
-		for i, ent in ipairs(ents.GetAll()) do
-			if ent:IsWeapon() then
-				table.insert(options, ent:GetPos())
+		-- delay spawn by 120 seconds
+		timer.Simple(120, function()
+			for i, ent in ipairs(ents.GetAll()) do
+				if ent:IsWeapon() then
+					table.insert(options, ent:GetPos())
+				end
 			end
-		end
-		if #options >= 1 then
-			local geagle = ents.Create("weapon_ttt_powerdeagle")
-			geagle:SetPos(options[math.random(#options)] + Vector(0,0,30))
-			geagle:Spawn()
-		end
+			if #options >= 1 then
+				local geagle = ents.Create("weapon_ttt_powerdeagle")
+				geagle:SetPos(options[math.random(#options)] + Vector(0,0,30))
+				geagle:Spawn()
+			end
+		end)
 	end
 	function geag_alert(wep, owner)
 		if wep:GetClass() == "weapon_ttt_powerdeagle" then
-			owner:PrintMessage(HUD_PRINTCENTER, "GOLDEN DEAG EQUIPPED")
 			owner:ChatPrint("GOLDEN DEAG EQUIPPED")
 			owner:ChatPrint("Handle with care, soldier.")
 		end
 	end
-	hook.Add("TTTBeginRound", "spawn_1_geagle", spawn_geag)
-	hook.Add("WeaponEquip","geag_alert", geag_alert)
+	--hook.Add("TTTBeginRound", "spawn_1_geagle", spawn_geag)
+	--hook.Add("WeaponEquip","geag_alert", geag_alert)
 	--hook.Remove("TTTBeginRound", "spawn_1_geagle")
 	--hook.Remove("WeaponEquip","geag_alert")
 end
+
 
 -- hitmarker sound
 if SERVER then
@@ -118,9 +121,6 @@ hook.Add("PlayerSay", "custom_command_remove_ents", function(sender, text, teamC
 end)
 
 
-
-
-
 -- MAKE EXPLOSION
 if SERVER then
 	function CreateExplosionAtPosition(pos)
@@ -154,7 +154,6 @@ if SERVER then
 end
 
 
-
 -- SFX FOR KNIFE KILLS
 if SERVER then
 	local knife_stab_sound = Sound("physics/flesh/flesh_strider_impact_bullet1.wav")
@@ -186,8 +185,7 @@ list.Set( "trail_materials", "#trail.lol", "trails/lol" )
 		["ttt_confgrenade_proj"] = true,
 */
 
--- GRENADE TRACERS
--- when standard grenades are thrown, track the projectile with red laser trail
+-- GRENADE TRACERS AND SOUNDS
 if SERVER then
 	local grenadeTypes = {
 		["ttt_frag_proj"] = true,
@@ -268,56 +266,48 @@ if SERVER then
 		local effectdata = EffectData()
 		effectdata:SetOrigin(ent:GetPos())
 		effectdata:SetStart(ent:GetPos())
-		util.Effect("Sparks", effectdata)
+		util.Effect("ElectricSparks", effectdata)
 		effectdata:SetOrigin(ent:GetEyeTrace().HitPos)
 		effectdata:SetStart(ent:GetEyeTrace().HitPos)
-		util.Effect("Sparks", effectdata)
+		util.Effect("ElectricSparks", effectdata)
 	end)
 	
 end
 
--- halloween gobble and scream. only scream enabled, currently, not halloween anymore
-local gobble_message_name = "gobble_message"
-local scream_message_name = "scream_message"
+
+
+
 if CLIENT then
-	local hook_type = "Think" 
-	local hook_name = "gobble_scream_think"
-	local next_gobble_time = 0
-	local gobble_cooldown = 0.5 --seconds
-	local next_scream_time = 0
-	local scream_cooldown = 2 --seconds
-	hook.Add(hook_type, hook_name, function()
-		if input.IsButtonDown(KEY_G) then
-			if CurTime() > next_gobble_time and LocalPlayer():Alive() then
-				net.Start(gobble_message_name)
-					net.WriteInt(LocalPlayer():EntIndex(), 16)
-					net.SendToServer()
-				next_gobble_time = CurTime() + gobble_cooldown
-			end
-		elseif input.IsButtonDown(KEY_H) then 
-			if CurTime() > next_scream_time and LocalPlayer():Alive() then
-				net.Start(scream_message_name)
-					net.WriteInt(LocalPlayer():EntIndex(), 16)
-					net.SendToServer()
-				next_scream_time = CurTime() + scream_cooldown 
+	-- Global table to hold sphere data
+	local spheresToDraw = {}
+
+	-- Function to add a sphere to the drawing queue
+	function AddSphere(origin, radius, duration)
+		table.insert(spheresToDraw, {
+			origin = origin,
+			radius = radius,
+			duration = CurTime() + duration, -- Duration in seconds
+			color = Color(150, 150, 150, 50) -- Default color (white, semi-transparent)
+		})
+
+	end
+
+	-- Hook for drawing spheres
+	hook.Add("PostDrawOpaqueRenderables", "DrawSpheres", function()
+		for i = #spheresToDraw, 1, -1 do
+			local sphere = spheresToDraw[i]
+
+			if CurTime() > sphere.duration then
+				table.remove(spheresToDraw, i) -- Remove expired spheres
+			else
+				render.SetColorMaterial()
+				render.DrawSphere(sphere.origin, sphere.radius, 8, 8, sphere.color, true)
 			end
 		end
 	end)
-	--hook.Remove(hook_type, hook_name)
-end
-if SERVER then
-	resource.AddFile("sound/gobble1.mp3")
-	local gobble_sound = Sound("gobble1.mp3")
-	util.AddNetworkString(gobble_message_name)
-	net.Receive(gobble_message_name, function()
-		Entity(net.ReadInt(16)):EmitSound(gobble_sound, 80, 100, 1)
-	end)
-	resource.AddFile("sound/scream.mp3")
-	local scream_sound = Sound("scream.mp3")
-	util.AddNetworkString(scream_message_name)
-	net.Receive(scream_message_name, function()
-		Entity(net.ReadInt(16)):EmitSound(scream_sound, 80, 100, 1)
-	end)
+
+	-- Example usage
+	-- AddSphere(Vector(0, 0, 100), 25, 10) -- A sphere with a radius of 25 units at position (0, 0, 100) lasting 10 seconds
 end
 
 
@@ -380,110 +370,87 @@ if CLIENT then
 
 	end)
 
-
-
-
-	
 end
 
 
--- gnome game mode
+
+
+
+
+
+
+-- head size changer
 if SERVER then
-
-	local gnome_model = "models/splinks/gnome_chompski/player_gnome.mdl"
-	local orig_models = {}
-
-	local gnome_view_offset = Vector(0,0,19)
-	local gnome_view_offset_ducked = Vector(0,0,5)
-
-	local function gnomify(ply)
-		ply:SetModel(gnome_model)
-		ply:SetMaxHealth(25)
-		ply:SetHealth(25)
-		ply:SetViewOffset(gnome_view_offset)
-		ply:SetViewOffsetDucked(gnome_view_offset_ducked)
-	end
-
-	concommand.Add("gnomes", function(ply, cmd, args)
-
-		if not IsValid(ply) then return end
-		if not ply:IsAdmin() then return end 
-		local mode = args[1]
-
-		if mode == "on" then
-			print("gnomes on")
-
-			local survivor_id = math.random(#player.GetAll())
-
-			orig_models = {}
-			for i,ply in ipairs(player.GetAll()) do
-				if i != survivor_id then
-					orig_models[ply:SteamID()] = ply:GetModel()
-				end
-			end
-
-			-- prevent gnome from crouching
-			hook.Add("SetupMove", "PreventCrouch", function(ply, moveData, cmd)
-				if ply:KeyDown(IN_DUCK) then
-					if orig_models[ply:SteamID()] != nil then
-						-- If the player is trying to crouch, prevent it by setting the duck state to false
-						moveData:SetButtons(moveData:GetButtons() - IN_DUCK)
-					end
-				end
-			end)
-
-			-- when spawn
-			hook.Add("PlayerSpawn", "gnome_mode_spawn", function(ply)
-				if orig_models[ply:SteamID()] != nil then
-					timer.Simple(0.5, function()
-						gnomify(ply)
-					end)
-				end
-			end)
-
-			-- on round start
-			hook.Add("TTTBeginRound", "gnome_mode", function()
-				for i,ply in ipairs(player.GetAll()) do
-					if orig_models[ply:SteamID()] != nil then
-						ply:ChatPrint("The boys are back in town.")
-						gnomify(ply)
-					else
-						ply:ChatPrint("Gnomes are back. And they're pissed. Survive.")
-					end
-				end
-			end)
-
-			RunConsoleCommand("ttt_roundrestart")
-
-		elseif mode == "off" then
-
-			print("gnomes off")
-
-			hook.Remove("TTTBeginRound", "gnome_mode")
-			hook.Remove("ScalePlayerDamage", "gnome_mode_spawn")
-			hook.Remove("SetupMove", "PreventCrouch")
-
-			for i,ply in ipairs(player.GetAll()) do
-				ply:SetViewOffset(Vector(0,0,64))
-				ply:SetViewOffsetDucked(Vector(0,0,28))
-				if orig_models[ply:SteamID()] != nil then
-					ply:SetModel(orig_models[ply:SteamID()])
-				end
-				ply:SetMaxHealth(100)
-				ply:SetHealth(100)
-			end
-
-			orig_models = {}
-
-			RunConsoleCommand("ttt_roundrestart")
-
-		else
-			print("invalid mode")
-		end
-	end)	
-
+	concommand.Add("scale_head", function( ply, cmd, args )
+		if !IsValid(ply) then return end
+		-- player can only increase head size
+		if tonumber(args[1]) < 1 then return end
+		
+		local boneID = ply:LookupBone("ValveBiped.Bip01_Head1")
+		local scale = tonumber(args[1])
+		ply:ManipulateBoneScale(boneID, Vector(1,1,1) * scale)
+	end)
 end
 
+
+
+
+if SERVER then
+	hook.Add( "PlayerDeathSound", "CustomPlayerDeath", function( ply )
+		ply:EmitSound( "beams/beamstart5.wav", SNDLVL_NORM, math.random( 70, 126 ) ) -- plays the sound with normal sound levels, and a random pitch between 70 and 126
+		return true -- we don't want the default sound!
+	end )
+	hook.Remove( "PlayerDeathSound", "CustomPlayerDeath" )
+end
+
+
+
+
+
+
+-- -- halloween gobble and scream sound effect keys. only scream enabled, currently, not halloween anymore
+-- local gobble_message_name = "gobble_message"
+-- local scream_message_name = "scream_message"
+-- if CLIENT then
+-- 	local hook_type = "Think" 
+-- 	local hook_name = "gobble_scream_think"
+-- 	local next_gobble_time = 0
+-- 	local gobble_cooldown = 0.5 --seconds
+-- 	local next_scream_time = 0
+-- 	local scream_cooldown = 2 --seconds
+-- 	hook.Add(hook_type, hook_name, function()
+-- 		if input.IsButtonDown(KEY_G) then
+-- 			if CurTime() > next_gobble_time and LocalPlayer():Alive() then
+-- 				net.Start(gobble_message_name)
+-- 					net.WriteInt(LocalPlayer():EntIndex(), 16)
+-- 					net.SendToServer()
+-- 				next_gobble_time = CurTime() + gobble_cooldown
+-- 			end
+-- 		elseif input.IsButtonDown(KEY_H) then 
+-- 			if CurTime() > next_scream_time and LocalPlayer():Alive() then
+-- 				net.Start(scream_message_name)
+-- 					net.WriteInt(LocalPlayer():EntIndex(), 16)
+-- 					net.SendToServer()
+-- 				next_scream_time = CurTime() + scream_cooldown 
+-- 			end
+-- 		end
+-- 	end)
+-- 	hook.Remove(hook_type, hook_name)
+-- end
+-- if SERVER then
+-- 	resource.AddFile("sound/gobble1.mp3")
+-- 	local gobble_sound = Sound("gobble1.mp3")
+-- 	util.AddNetworkString(gobble_message_name)
+-- 	net.Receive(gobble_message_name, function()
+-- 		Entity(net.ReadInt(16)):EmitSound(gobble_sound, 80, 100, 1)
+-- 	end)
+-- 	resource.AddFile("sound/scream.mp3")
+-- 	local scream_sound = Sound("scream.mp3")
+-- 	util.AddNetworkString(scream_message_name)
+-- 	net.Receive(scream_message_name, function()
+-- 		Entity(net.ReadInt(16)):EmitSound(scream_sound, 80, 100, 1)
+-- 	end)
+-- end
 
 
 
@@ -554,29 +521,44 @@ end
 
 
 
--- when a player kills another player with a headshot, play a sound
+-- -- when a player kills another player with a headshot, play a sound
+-- if SERVER then
+-- 	-- create server message for headshot sound
+-- 	util.AddNetworkString("headshot_sound")
+
+-- 	local headshot_sound = Sound("Weapon_Crossbow.BoltHitWorld")
+-- 	hook.Add("DoPlayerDeath", "SoundForHeadshot", function(victim, attacker, dmginfo)
+-- 		if dmginfo:IsBulletDamage() and victim:LastHitGroup() == HITGROUP_HEAD then
+-- 			-- send message to client to play sound
+-- 			net.Start("headshot_sound")
+-- 			net.Send(attacker)
+-- 		end
+-- 	end)
+-- else
+-- 	local headshot_sound = Sound("Weapon_Crossbow.BoltHitWorld")
+-- 	net.Receive("headshot_sound", function()
+-- 		timer.Simple(0.2, function()
+-- 			-- play client sound for headshot. a ping sound
+-- 			sound.Play(headshot_sound, LocalPlayer():GetPos(), 75, 100, 1)
+-- 		end)
+-- 	end)
+-- end
+
+
+
+
 if SERVER then
-	-- create server message for headshot sound
-	util.AddNetworkString("headshot_sound")
-
-	local headshot_sound = Sound("Weapon_Crossbow.BoltHitWorld")
-	hook.Add("DoPlayerDeath", "SoundForHeadshot", function(victim, attacker, dmginfo)
-		if dmginfo:IsBulletDamage() and victim:LastHitGroup() == HITGROUP_HEAD then
-			-- send message to client to play sound
-			net.Start("headshot_sound")
-			net.Send(attacker)
-		end
+	-- set entity(1) playermodel to gnome
+	local gnome_model = "models/splinks/gnome_chompski/player_gnome.mdl"
+	concommand.Add("set_gnome", function(ply, cmd, args)
+		local ent = ply
+		if not IsValid(ent) then return end
+		ent:SetModel(gnome_model)
 	end)
-else
-	local headshot_sound = Sound("Weapon_Crossbow.BoltHitWorld")
-	net.Receive("headshot_sound", function()
-		timer.Simple(0.2, function()
-			-- play client sound for headshot. a ping sound
-			sound.Play(headshot_sound, LocalPlayer():GetPos(), 75, 100, 1)
-		end)
-	end)
+	-- remove this concommand
+	--concommand.Remove("set_gnome")
+	
 end
-
 
 /*
 
@@ -624,11 +606,13 @@ end
 -- end
 
 -- when any entity is created, print it to console
+/*
 if SERVER then
 	hook.Add("OnEntityCreated", "print_created_ent", function(ent)
 		print(ent)
 	end)
 end
+*/
 
 -- DASH
 local DASH_COOLDOWN = 0.75	--seconds
@@ -718,4 +702,5 @@ if CLIENT then
 end
 
 
-*/
+
+

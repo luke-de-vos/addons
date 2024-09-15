@@ -402,6 +402,7 @@ local function switcheroo()
 
 end
 
+
 -- prompt effects
 
 local options = {
@@ -415,11 +416,11 @@ local options = {
     --invert_damage, 
     --last_to_jump, 
     --last_to_take_damage, 
-    low_grav, 
+    --low_grav, 
     --shoot_boost, 
     --slaps, 
     super_speed,
-    switcheroo
+    switcheroo,
 }
 
 
@@ -435,10 +436,11 @@ hook.Add("PlayerSay", "command_dougies_randomat", function(sender, text, teamCha
                 end
             end
             options[pick1]()
-            options[pick2]()
+            --options[pick2]()
         end)
     end
     if sender:GetUserGroup() ~= "user" and text == "!effects_off" then
         hook.Remove("TTTBeginRound", "random_effects_begin_round")
     end
 end)
+
