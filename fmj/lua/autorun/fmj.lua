@@ -109,6 +109,32 @@ if SERVER then
 	p2d[HITGROUP_LEFTLEG] = 0.54
 	p2d[HITGROUP_RIGHTLEG] = 0.54
 
+	local MAT_BULLET_RESISTANCE = {
+		[MAT_ANTLION] = 0.2, 
+		[MAT_BLOODYFLESH] = 0.2, 
+		[MAT_CONCRETE] = 10, 
+		[MAT_DIRT] = 0.8, 
+		[MAT_EGGSHELL] = 0.4, 
+		[MAT_FLESH] = 0.2, 
+		[MAT_GRATE] = 1.0, 
+		[MAT_ALIENFLESH] = 0.3, 
+		[MAT_CLIP] = 0, 
+		[MAT_SNOW] = 0.6, 
+		[MAT_PLASTIC] = 0.8, 
+		[MAT_METAL] = 3, 
+		[MAT_SAND] = 2.5, 
+		[MAT_FOLIAGE] = 0.4, 
+		[MAT_COMPUTER] = 0.8, 
+		[MAT_SLOSH] = 0.6, 
+		[MAT_TILE] = 2.0, 
+		[MAT_GRASS] = 0.2, 
+		[MAT_VENT] = 2.0, 
+		[MAT_WOOD] = 1.2, 
+		[MAT_DEFAULT] = 0, 
+		[MAT_GLASS] = 0.6, 
+		[MAT_WARPSHIELD] = 2
+	}
+
 	-- math helpers
 	local function myDot(a, b)
 		return (a[1] * b[1]) + (a[2] * b[2]) + (a[3] * b[3])
@@ -156,10 +182,10 @@ if SERVER then
 		})
 	end
 
-	local function fmj_tracer(f_tr)
+	local function fmj_tracer(f_tr, fmj_dir)
 		local eff = EffectData()
 		eff:SetOrigin(f_tr.HitPos)
-		eff:SetStart(f_tr.StartPos)
+		eff:SetStart(f_tr.StartPos + fmj_dir * 5)
 		eff:SetScale(4500)
 		eff:SetFlags(0x0001)
 		--eff:SetAttachment(1)
@@ -277,6 +303,11 @@ if SERVER then
 
 	function fmj_callback(shooter, f_tr, dmg_info, bdata)
 
+		/*
+		Bullet penetration logic
+
+		*/
+
 		if f_tr.HitSky or f_tr.Entity == NULL then return end
 		if f_tr.MatType == MAT_GLASS then return end
 
@@ -295,9 +326,8 @@ if SERVER then
 		local hit_angle = 0
 		local status = -1 -- -1 = normal, 0 = ricochet, 1 = fmj
 		
-
 		local fmj_dir = f_tr.Normal
-		local b_tr = util.TraceLine({start = f_tr.HitPos, endpos = f_tr.HitPos}) -- dummy start and end. This line just initializes b_tr to be passed to update_trace
+		local b_tr = util.TraceLine({start = f_tr.HitPos, endpos = f_tr.HitPos}) -- dummy start and end. This line initializes b_tr for use with to update_trace
 
 		while true do
 
@@ -316,12 +346,15 @@ if SERVER then
 			-- penetration or ricochet?
 			hit_angle = fmj_get_angle(fmj_dir, f_tr.HitNormal)
 			if fmj_log then print("\tHit angle", hit_angle) end
-			if hit_angle < ricochet_angle and bdata.Damage >= ricochet_min_damage and !hitting:IsPlayer() and !hitting:IsRagdoll() then
+			if bdata.Damage >= ricochet_min_damage 
+			and hit_angle < ricochet_angle 
+			and !hitting:IsPlayer() 
+			and !hitting:IsRagdoll() then
 				-- do ricochet
 				status = 0
 				fmj_dir = get_reflection(fmj_dir, f_tr.HitNormal)
-				update_trace(f_tr, start_pos, start_pos+fmj_dir*bullet_range, f_tr.Entity)
-				fmj_tracer(f_tr)
+				update_trace(f_tr, start_pos, start_pos + fmj_dir * bullet_range, f_tr.Entity)
+				fmj_tracer(f_tr, fmj_dir)
 				fmj_sparks(f_tr.StartPos, f_tr.Normal)
 				sound.Play("FX_RicochetSound.Ricochet", f_tr.StartPos)
 			else
@@ -330,7 +363,7 @@ if SERVER then
 				status = 1
 				if not f_tr.HitWorld then
 					-- for non-world solids, run a filtered trace through ent then an unfiltered trace back to get depth
-					update_trace(f_tr, start_pos, start_pos+fmj_dir*bullet_range, {shooter, f_tr.Entity})
+					update_trace(f_tr, start_pos, start_pos + fmj_dir * bullet_range, {shooter, f_tr.Entity})
 					update_trace(b_tr, f_tr.HitPos-fmj_dir, start_pos, shooter)
 					final_pos = b_tr.HitPos
 					this_depth = f_tr.StartPos:Distance(final_pos)
@@ -342,14 +375,15 @@ if SERVER then
 				end
 
 				-- check depth limit
-				if hitting:IsPlayer() or hitting:IsRagdoll() then
-					this_depth = this_depth / 5
-				end
+				-- if hitting:IsPlayer() or hitting:IsRagdoll() then
+				-- 	this_depth = this_depth / 5
+				-- end
 				if pierced_depth + this_depth <= fmj_depth_limit then -- successful penetration
-					pierced_depth = pierced_depth + this_depth
+					pierced_depth = pierced_depth + (this_depth * MAT_BULLET_RESISTANCE[f_tr.MatType])
+					--pierced_depth = pierced_depth + this_depth
 					if fmj_log then print("\tPen depth ", this_depth); table.insert(points_se, final_pos) end
 					fmj_impact(b_tr)
-					fmj_tracer(f_tr)
+					fmj_tracer(f_tr, fmj_dir)
 					if !(hitting:IsPlayer() or hitting:IsRagdoll()) then
 						--fmj_sparks(b_tr.HitPos + b_tr.Normal * 5, -b_tr.Normal) -- sparks originate slightly inside of surface; looks better
 						fmj_sparks(b_tr.HitPos + b_tr.Normal * 5, fmj_dir) -- sparks originate slightly inside of surface. looks better
@@ -367,7 +401,16 @@ if SERVER then
 			end
 			fmj_impact(f_tr)
 			bullet_hit(f_tr.Entity, f_tr, bdata, pierced_depth/fmj_depth_limit, status)
-
+			-- firebullets
+			-- shooter:FireBullets({
+			-- 	Attacker = bdata.Attacker,
+			-- 	Damage = bdata.Damage,
+			-- 	Force = bdata.Force,
+			-- 	Tracer = 1,
+			-- 	Dir = fmj_dir,
+			-- 	Src = f_tr.HitPos,
+			-- 	AmmoType = bdata.AmmoType,
+			-- })
 		end
 
 		if fmj_log then print("\tPierced depth: ", pierced_depth, fmj_depth_limit, '\n'); send_points_se(points_se) end
@@ -377,3 +420,8 @@ if SERVER then
 	end
 
 end
+
+
+
+
+
