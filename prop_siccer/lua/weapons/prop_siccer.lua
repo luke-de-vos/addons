@@ -49,6 +49,12 @@ local DELAY_TABLE = {0.05, 5, 20, 60}
 SWEP.DelayIndex = 1
 SWEP.NextReloadTime = 0
 
+-- prepare networking for client-side confirmation sound
+if SERVER then
+	util.AddNetworkString("prop_siccer_confirm")
+end
+
+
 function SWEP:PrimaryAttack()
 	if self:Clip1() <= 0 then return end
 	if SERVER then
@@ -57,12 +63,21 @@ function SWEP:PrimaryAttack()
 			if !target_ent:GetPhysicsObject():IsMotionEnabled() then return end
 			if !target_ent:GetPhysicsObject():IsMoveable() then return end
 			self:TakePrimaryAmmo(1)
-			-- TODO play clientside confirmation sound
+			-- play clientside confirmation sound
+			net.Start("prop_siccer_confirm")
+			net.Send(self:GetOwner())
+
 			timer.Simple(DELAY_TABLE[self.DelayIndex], function()
 				self:Sic(target_ent)
 			end)
 		end
 	end
+end
+
+if CLIENT then
+	net.Receive("prop_siccer_confirm", function()
+		surface.PlaySound("buttons/button24.wav")
+	end)
 end
 
 function SWEP:Sic(prop_ent)
@@ -85,7 +100,8 @@ function float(prop_ent)
 	phys:EnableGravity(false)
 	force = Vector(0,0,3000) * phys:GetMass() * engine.TickInterval()
 	phys:ApplyForceCenter(force)
-	
+	-- play sound AlyxEMP.Charge
+	prop_ent:EmitSound("AlyxEMP.Charge", 100)
 end
 
 function get_vec_to_closest_player(prop_ent)
