@@ -3,6 +3,7 @@ if SERVER then
    AddCSLuaFile()
 end
 resource.AddFile("materials/vgui/ttt/icon_instant_transmission.png")
+resource.AddFile("materials/vgui/ttt/dragon_ball_2.png")
 resource.AddFile("sound/sfx_instant_transmission.mp3")
 
 ITEM.EquipMenuData = {
@@ -13,7 +14,7 @@ ITEM.EquipMenuData = {
 ITEM.PrintName = "Instant Transmission"
 ITEM.CanBuy = { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 }
 
-ITEM.hud = Material("vgui/ttt/icon_instant_transmission.png")
+ITEM.hud = Material("vgui/ttt/dragon_ball_2.png")
 ITEM.material = "vgui/ttt/icon_instant_transmission.png"
 ITEM.builtin = true
 
