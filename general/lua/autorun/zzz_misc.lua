@@ -320,71 +320,66 @@ if CLIENT then
 end
 
 
--- print weapon stats to screen
-if CLIENT then
+-- -- print weapon stats to screen
+-- if CLIENT then
 
-	local stats_keys = {"Damage", "Headshot", "Spread", "Recoil", "ROF", "Ammo Type"}
-	local stats = {}
+-- 	local stats_keys = {"Damage", "Headshot", "Spread", "Recoil", "ROF", "Ammo Type"}
+-- 	local stats = {}
 
-	local border = 5
-	local shift = 15
-	local box_height = #stats_keys * shift
+-- 	local border = 5
+-- 	local shift = 15
+-- 	local box_height = #stats_keys * shift
 
-	local box_title_color = Color(100,100,200,180)
-	local box_body_color = Color(20, 20, 20,135)
+-- 	local box_title_color = Color(100,100,200,180)
+-- 	local box_body_color = Color(20, 20, 20,135)
 
-	local box_x = nil
-	local box_y = nil
+-- 	local box_x = nil
+-- 	local box_y = nil
 
-	local yOffset = nil
+-- 	local yOffset = nil
 
-	-- when local player equips any weapon
-	hook.Add("HUDPaint", "DrawWeaponStats", function()
-		local ply = LocalPlayer()
-		if not IsValid(ply) then return end
+-- 	-- when local player equips any weapon
+-- 	hook.Add("HUDPaint", "DrawWeaponStats", function()
+-- 		local ply = LocalPlayer()
+-- 		if not IsValid(ply) then return end
 
-		local weapon = ply:GetActiveWeapon()
-		if IsValid(weapon) then
-			stats = {
-				tostring(weapon.Primary.Damage),
-				tostring(weapon.HeadshotMultiplier).."x",
-				tostring(math.Round(math.pow(weapon.Primary.Cone*100, 2) * 3.14, 2)),
-				weapon.Primary.Recoil,
-				tostring(math.Round(1/weapon.Primary.Delay, 2)).." rps",
-				weapon.Primary.Ammo,
-			}
+-- 		local weapon = ply:GetActiveWeapon()
+-- 		if IsValid(weapon) then
+-- 			stats = {
+-- 				tostring(weapon.Primary.Damage),
+-- 				tostring(weapon.HeadshotMultiplier).."x",
+-- 				tostring(math.Round(math.pow(weapon.Primary.Cone*100, 2) * 3.14, 2)),
+-- 				weapon.Primary.Recoil,
+-- 				tostring(math.Round(1/weapon.Primary.Delay, 2)).." rps",
+-- 				weapon.Primary.Ammo,
+-- 			}
 
-			box_x = ScrW() * 0.8
-			box_y = ScrH() * 0.95 - box_height
+-- 			box_x = ScrW() * 0.8
+-- 			box_y = ScrH() * 0.95 - box_height
 			
-			-- draw boxes
-			surface.SetDrawColor(box_title_color)
-			surface.DrawRect(box_x - border, box_y, 230, shift)
-			surface.SetDrawColor(box_body_color)
-			surface.DrawRect(box_x - border, box_y + shift, 230, box_height + border)
+-- 			-- draw boxes
+-- 			surface.SetDrawColor(box_title_color)
+-- 			surface.DrawRect(box_x - border, box_y, 230, shift)
+-- 			surface.SetDrawColor(box_body_color)
+-- 			surface.DrawRect(box_x - border, box_y + shift, 230, box_height + border)
 
-			-- draw text
-			yOffset = shift
-			draw.SimpleText(weapon.ClassName, "TargetID", box_x, box_y + yOffset, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
-			for i, key in ipairs(stats_keys) do
-				yOffset = yOffset + shift
-				draw.SimpleText(key, "TargetID", box_x, box_y + yOffset, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
-				draw.SimpleText(tostring(stats[i]), "TargetID", box_x + 105, box_y + yOffset, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
-			end
+-- 			-- draw text
+-- 			yOffset = shift
+-- 			draw.SimpleText(weapon.ClassName, "TargetID", box_x, box_y + yOffset, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
+-- 			for i, key in ipairs(stats_keys) do
+-- 				yOffset = yOffset + shift
+-- 				draw.SimpleText(key, "TargetID", box_x, box_y + yOffset, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
+-- 				draw.SimpleText(tostring(stats[i]), "TargetID", box_x + 105, box_y + yOffset, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
+-- 			end
 
-		else
-			stats = {}
-		end
-
-
-	end)
-
-end
+-- 		else
+-- 			stats = {}
+-- 		end
 
 
+-- 	end)
 
-
-
+-- end
 
 
 
@@ -403,61 +398,28 @@ end
 
 
 
-
-if SERVER then
-	hook.Add( "PlayerDeathSound", "CustomPlayerDeath", function( ply )
-		ply:EmitSound( "beams/beamstart5.wav", SNDLVL_NORM, math.random( 70, 126 ) ) -- plays the sound with normal sound levels, and a random pitch between 70 and 126
-		return true -- we don't want the default sound!
-	end )
-	hook.Remove( "PlayerDeathSound", "CustomPlayerDeath" )
-end
-
-
-
-
-
-
--- -- halloween gobble and scream sound effect keys. only scream enabled, currently, not halloween anymore
+-- -- play sound effect with G
 -- local gobble_message_name = "gobble_message"
--- local scream_message_name = "scream_message"
 -- if CLIENT then
--- 	local hook_type = "Think" 
--- 	local hook_name = "gobble_scream_think"
--- 	local next_gobble_time = 0
--- 	local gobble_cooldown = 0.5 --seconds
--- 	local next_scream_time = 0
--- 	local scream_cooldown = 2 --seconds
--- 	hook.Add(hook_type, hook_name, function()
+-- 	local next_sound_time = 0
+-- 	local sound_cooldown = 0.5 --seconds
+-- 	hook.Add("Think" , "sound_think", function()
 -- 		if input.IsButtonDown(KEY_G) then
--- 			if CurTime() > next_gobble_time and LocalPlayer():Alive() then
+-- 			if CurTime() > next_sound_time and LocalPlayer():Alive() then
 -- 				net.Start(gobble_message_name)
--- 					net.WriteInt(LocalPlayer():EntIndex(), 16)
--- 					net.SendToServer()
--- 				next_gobble_time = CurTime() + gobble_cooldown
--- 			end
--- 		elseif input.IsButtonDown(KEY_H) then 
--- 			if CurTime() > next_scream_time and LocalPlayer():Alive() then
--- 				net.Start(scream_message_name)
--- 					net.WriteInt(LocalPlayer():EntIndex(), 16)
--- 					net.SendToServer()
--- 				next_scream_time = CurTime() + scream_cooldown 
+-- 				net.WriteInt(LocalPlayer():EntIndex(), 16)
+-- 				net.SendToServer()
+-- 				next_sound_time = CurTime() + sound_cooldown
 -- 			end
 -- 		end
 -- 	end)
--- 	hook.Remove(hook_type, hook_name)
+-- 	--hook.Remove("Think" , "sound_think")
 -- end
 -- if SERVER then
--- 	resource.AddFile("sound/gobble1.mp3")
--- 	local gobble_sound = Sound("gobble1.mp3")
+-- 	resource.AddFile("sound/hohoho.mp3")
 -- 	util.AddNetworkString(gobble_message_name)
 -- 	net.Receive(gobble_message_name, function()
--- 		Entity(net.ReadInt(16)):EmitSound(gobble_sound, 80, 100, 1)
--- 	end)
--- 	resource.AddFile("sound/scream.mp3")
--- 	local scream_sound = Sound("scream.mp3")
--- 	util.AddNetworkString(scream_message_name)
--- 	net.Receive(scream_message_name, function()
--- 		Entity(net.ReadInt(16)):EmitSound(scream_sound, 80, 100, 1)
+-- 		Entity(net.ReadInt(16)):EmitSound(Sound("hohoho.mp3"), 80, 100, 1)
 -- 	end)
 -- end
 
@@ -736,3 +698,166 @@ end
 
 
 
+
+if CLIENT then
+    concommand.Add("list_resources", function(ply, cmd, args, argStr)
+        local searchTerm = argStr:lower()
+        
+        -- List models
+        local materials = file.Find("models/*.mdl", "GAME")
+        for _, mat in pairs(materials) do
+            if mat:lower():find(searchTerm) then
+                print("models: models/" .. mat)
+            end
+        end
+    end)
+end
+
+
+-- -- 2024 christmas code
+-- -- adds command to spawn a present
+-- if SERVER then
+-- 	present_duration = 10
+-- 	local model_options = {
+-- 		--"models/props_modest_christmas/present03.mdl",
+-- 		--"models/zombiexmas/gift1_static.mdl",
+-- 		"models/present/launcher_present.mdl",
+-- 	}
+
+-- 	concommand.Add("give_present", function(ply, cmd, args, argStr)
+-- 		local spawnpos = ply:GetPos() + Vector(0,0,50) + ply:GetAimVector() * 50
+-- 		local box = ents.Create("prop_physics")
+-- 		box:SetModel(model_options[math.random(#model_options)])
+-- 		box:SetPos(spawnpos)
+-- 		--box:SetModelScale(0.3)
+-- 		box:Spawn()
+-- 		box:PhysicsInit(SOLID_VPHYSICS, nil)
+-- 		box:PhysWake()
+-- 		box:Activate()
+-- 		box:GetPhysicsObject():SetVelocity(ply:GetVelocity())
+-- 		box:GetPhysicsObject():SetMass(20)
+-- 		box:SetPhysicsAttacker(ply, present_duration)
+
+-- 		-- color options, red and green
+-- 		local options = {Color(255,0,0), Color(0,255,0)}
+-- 		box:SetColor(options[math.random(#options)])
+
+-- 		-- play beep sound ata random pitch
+-- 		box:EmitSound("buttons/blip1.wav", 65, math.random(80, 120), 0.8, CHAN_AUTO)
+
+-- 		-- add callback function to box so that when it collides with something, it explodes
+-- 		box:AddCallback("PhysicsCollide", function(ent, data)
+-- 			if data.DeltaTime < 0.3 then -- ignore when many collision are quickly reported
+-- 				return
+-- 			end
+-- 			if data.OurOldVelocity:Length() < 500 then -- minimum speed for explosion
+-- 				return
+-- 			end
+-- 			if IsFirstTimePredicted() then
+-- 				_explosion(ply, box, data.HitPos, 200, 40) -- radius, damage
+-- 				if IsValid(box) then 
+-- 					box:Remove()
+-- 				end
+-- 			end
+-- 		end)
+
+-- 		timer.Simple(present_duration, function()
+-- 			if IsValid(box) then
+-- 				box:Remove()
+-- 			end
+-- 		end)
+
+-- 	end)
+-- end
+
+-- -- list the names of the grenades in TTT
+-- -- 
+
+-- -- Fast Grenade Switch for TTT
+-- if SERVER then
+
+-- 	-- Hook into weapon switch events
+-- 	hook.Add("PlayerSwitchWeapon", "InstantGrenadeSwitch", function(ply, oldWeapon, newWeapon)
+-- 		-- Check if the new weapon exists and is a grenade
+-- 		if IsValid(newWeapon) and string.find(string.lower(newWeapon:GetClass()), "grenade") then
+-- 			-- Force instant weapon hold
+-- 			ply:SetNextWeaponSwitch(0)
+-- 			newWeapon:SetNextPrimaryFire(0)
+-- 			newWeapon:SetNextSecondaryFire(0)
+			
+-- 			-- Skip default deploy animation
+-- 			if newWeapon.SetDeploySpeed then
+-- 				newWeapon:SetDeploySpeed(100) -- Very fast deploy speed
+-- 			end
+			
+-- 			return true -- Allow the switch
+-- 		end
+-- 	end)
+
+-- 	--remove ths
+-- 	hook.Remove("PlayerSwitchWeapon", "InstantGrenadeSwitch")
+-- end
+
+
+-- -- add command that, when player types "snowball" in console, gives them the item named "schneeball"
+-- if SERVER then
+-- 	concommand.Add("snowball", function(ply, cmd, args)
+-- 		ply:Give("weapon_ttt_schneeball")
+-- 		print("gave "..ply:GetName().." a snowball")
+-- 	end)
+-- end
+
+
+
+-- grenade quick throw
+if SERVER then
+
+	local function throw_grenade(ply, grenade)
+		-- Execute attack commands with slight delay
+		ply:SetActiveWeapon(grenade)
+		timer.Simple(0.1, function()
+			if IsValid(ply) and ply:Alive() then
+				ply:ConCommand("+attack")
+				timer.Simple(0.05, function()
+					if IsValid(ply) and ply:Alive() then
+						ply:ConCommand("-attack")
+					end
+				end)
+			end
+		end)
+	end	
+
+	local nade_names = {
+		["weapon_ttt_smokegrenade"] = true,
+		["weapon_zm_molotov"] = true,
+		["weapon_ttt_frag"] = true,
+		["weapon_ttt_confgrenade"] = true
+	}
+
+    util.AddNetworkString("QuickNadeAttack")
+
+    -- Handle the quick nade attack
+    net.Receive("QuickNadeAttack", function(len, ply)
+        if not IsValid(ply) or not ply:Alive() or not ply:IsPlayer() then return end
+		local grenade = nil
+		for _, wep in ipairs(ply:GetWeapons()) do
+			if nade_names[wep:GetClass()] != nil then
+				throw_grenade(ply, wep)
+				break
+			end
+		end
+
+
+    end)
+end
+
+if CLIENT then
+    -- Bind key 4 to quick nade
+    hook.Add("PlayerButtonDown", "QuickNadeKey", function(ply, button)
+        if button == KEY_4 and IsValid(ply) and ply:Alive() then
+            net.Start("QuickNadeAttack")
+            net.SendToServer()
+            return true
+        end
+    end)
+end
