@@ -57,24 +57,9 @@ if SERVER then
         mode_hooks = {}
     end
 
-    -- UTILITY
-    function _get_roles()
-        local role_counts = {0,0,0,0}
-        local role_index = nil
-        for i,ply in ipairs(player.GetAll()) do
-            role_index = ply:GetRole() + 1
-            if role_index > 4 then
-                role_index = 4
-            end
-            role_counts[role_index] = role_counts[role_index] + 1
-        end
-        local role_names = {'inno','traitor','detective', 'misc'}
-        for role_index, count in ipairs(role_counts) do
-            print(role_names[role_index]..': '..count)
-        end
-    end
 
-    _get_roles()
+
+    
 
     function _normalize_vec(vec, new_hi)
         local new_vec = Vector(0,0,0)
@@ -140,10 +125,8 @@ if SERVER then
         effect:SetScale(1)
         effect:SetRadius(radius)
         effect:SetMagnitude(1)
-        if IsValid(attacker) then
-            util.Effect("Explosion", effect, true, true)
-            util.BlastDamage(inflictor, attacker, pos, radius, damage) -- radius, damage
-        end
+        util.Effect("Explosion", effect, true, true)
+        util.BlastDamage(inflictor, attacker, pos, radius, damage) -- radius, damage
     end
 
     function _headshot_effect(victim)
@@ -313,7 +296,7 @@ end
 
 
 if CLIENT then
-        -- Function to draw halos around all other players
+    -- Function to draw halos around all other players
     local function DrawPlayerHalos()
         hook.Add("PreDrawHalos", "DrawPlayerHalos", function()
             local players = player.GetAll()

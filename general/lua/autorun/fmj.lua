@@ -283,8 +283,6 @@ if SERVER then
 
 			local dmg_amt = math.floor((1-percent_pierced/2) * bdata.Damage * p2d[tr.HitGroup]) -- divide by 2 to make fmj damage from 100-50% bullet damage from 0-24 inch pen
 			
-			print(percent_pierced)
-
 			if ent:IsPlayer() then
 				local dinfo = DamageInfo()
 				dinfo:SetDamage(dmg_amt)

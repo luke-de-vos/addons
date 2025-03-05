@@ -61,7 +61,9 @@ function SWEP:Initialize()
 
 	self:SetWeaponHoldType( "slam" )
 
-	timer.Create( "medkit_ammo" .. self:EntIndex(), 4, 0, function() --Increased Recharge
+	local regen_time = 1 --Increased Recharge
+
+	timer.Create( "medkit_ammo" .. self:EntIndex(), regen_time, 0, function() 
 		if ( !IsValid( self.Owner ) ) then return end
 		if ( self:Clip1() < 100 ) then self:TakePrimaryAmmo( -1 ) end
 	end )
@@ -117,7 +119,8 @@ function SWEP:SecondaryAttack()
 		self:TakePrimaryAmmo( self.HealAmount )
 
 		ent:SetHealth( math.min( ent:GetMaxHealth(), ent:Health() + self.HealAmount ) )
-		ent:EmitSound( "vo/npc/female01/pain06.wav" )
+		local pitch = 
+		ent:EmitSound( "vo/npc/female01/pain06.wav", 75, math.random( 60, 100 ), 0.5)
 
 		self:SendWeaponAnim( ACT_VM_PRIMARYATTACK )
 

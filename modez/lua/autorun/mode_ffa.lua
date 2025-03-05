@@ -81,7 +81,7 @@ if SERVER then
 	function ffa_on(req_weapon)
 
 		if weapons.Get(req_weapon) == nil then
-			print("ffa_on() failed: req_weapon invalid.")
+			req_weapon = "weapon_zm_mac10"
 			return
 		end
 

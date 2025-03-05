@@ -1,11 +1,25 @@
 if SERVER then print("Executed lua: " .. debug.getinfo(1,'S').source) end
 
--- assumes installation of addon https://steamcommunity.com/sharedfiles/filedetails/?id=1655753632
+-- assumes this addon is installed https://steamcommunity.com/sharedfiles/filedetails/?id=1655753632
 
 
+if SERVER then
+    util.AddNetworkString("hold_type_message")
+    net.Receive("hold_type_message", function(len, ply)
+        local hold_type = net.ReadString()
+        if not IsValid(ply) or not ply:IsPlayer() then return end
+        ply:GetActiveWeapon():SetHoldType(hold_type)
+    end)
+end
 
 
 if CLIENT then
+
+    function send_hold_type(hold_type)
+        net.Start("hold_type_message")
+        net.WriteString(hold_type)
+        net.SendToServer()
+    end
 
     local function clean_emote_name(s)
         --return string with the following conversions:
@@ -298,13 +312,12 @@ if CLIENT then
         "f_indiadance"
     }
     
-    button2command = table.Shuffle(button2command)
+    table.Shuffle(button2command)
     local menu_dances = {}
     for i = 1, 9 do
         button2command[i] = button2command[i]
     end
 
-    -- W A S D scrollup scrolldown leftclick rightclick
     local function CreateButton(parent, x, y, text, command)
         local button = vgui.Create("DButton", parent)
         button:SetPos(x, y)
@@ -317,7 +330,8 @@ if CLIENT then
                 return
             end
             local original_holdtype = LocalPlayer():GetActiveWeapon():GetHoldType()
-            LocalPlayer():GetActiveWeapon():SetHoldType("normal")
+            --LocalPlayer():GetActiveWeapon():SetHoldType("normal")
+            send_hold_type("normal")
             RunConsoleCommand('ttt_show_gestures', '0')
             RunConsoleCommand('stopdance')
             RunConsoleCommand(command)
@@ -327,7 +341,8 @@ if CLIENT then
                 or button == 112 or button == 113 or button == 107 or button == 108 then -- scrollup scrolldown leftclick rightclick
                     RunConsoleCommand('ttt_show_gestures', '1')
                     if ply:Alive() then
-                        ply:GetActiveWeapon():SetHoldType(original_holdtype)    
+                        --ply:GetActiveWeapon():SetHoldType(original_holdtype)  
+                        send_hold_type(original_holdtype)  
                         RunConsoleCommand('stopdance')
                     end
                     hook.Remove("PlayerButtonDown", "convenient_key_to_stopdance")
@@ -336,7 +351,7 @@ if CLIENT then
         end
     end
 
-    local function OpenMenu()
+    local function OpenMenu(button2command)
         local frame = vgui.Create("DFrame")
         frame:SetSize(330, 350)
         frame:Center()
@@ -361,22 +376,11 @@ if CLIENT then
     hook.Add("PlayerButtonDown", "OpenMenuOnKeyPress", function(ply, button)
         if IsFirstTimePredicted() then
             if button == MENU_KEY then
-                OpenMenu()
+                OpenMenu(button2command)
             end
         end
     end)
     -- cleanup
     --hook.Remove("PlayerButtonDown", "OpenMenuOnKeyPress")
 
-end
-
-local commands = {}
-for cmd, _ in pairs(concommand.GetTable()) do
-    if string.StartWith(cmd, "f_") then
-        table.insert(commands, cmd)
-    end
-end
--- iterate over commands and print them
-for _, cmd in ipairs(commands) do
-    print(cmd)
 end
