@@ -2,25 +2,25 @@ print("Executed lua: " .. debug.getinfo(1,'S').source)
 
 
 
--- Store previous weapons for each player
-local player_previous_weapons = {}
 
 if CLIENT then
 	concommand.Add("quick_grenade", function()
+		LocalPlayer():EmitSound("WeaponFrag.Throw", 75, 100, 0.8, CHAN_BODY)
 		-- Send command to server
 		net.Start("QuickGrenadeThrow")
 		net.SendToServer()
 	end)
+	-- play throw sound effect
 end
 
 
 if SERVER then
 
-	local nade_quick_cook_times = {
-		["weapon_ttt_smokegrenade"] = 1,
-		["weapon_zm_molotov"] = 2,
-		["weapon_ttt_confgrenade"] = 3,
-		["weapon_ttt_frag"] = 5
+	local grenade_classes = {
+		["weapon_ttt_smokegrenade"] = true,
+		["weapon_zm_molotov"] = true,
+		["weapon_ttt_confgrenade"] = true,
+		["weapon_ttt_frag"] = true
 	}
 
 	local function quick_throw_grenade(ply)
@@ -29,15 +29,17 @@ if SERVER then
 		local current_weapon = ply:GetActiveWeapon()
 		if not IsValid(current_weapon) then return end
 		
-		-- Store current weapon for switching back later
-		player_previous_weapons[ply:SteamID()] = current_weapon:GetClass()
-		
 		-- Find a grenade in inventory
 		local grenade = nil
-		for _, wep in ipairs(ply:GetWeapons()) do
-			if nade_quick_cook_times[wep:GetClass()] then
-				grenade = wep
-				break
+		-- check active weapon first
+		if grenade_classes[current_weapon:GetClass()] then
+			grenade = current_weapon
+		else
+			for _, wep in ipairs(ply:GetWeapons()) do
+				if grenade_classes[wep:GetClass()] then
+					grenade = wep
+					break
+				end
 			end
 		end
 		
@@ -48,7 +50,9 @@ if SERVER then
 			ply:SelectWeapon(grenade:GetClass())
 			grenade:SetNextPrimaryFire(0)
 			grenade:SetNextSecondaryFire(0)
-			grenade.detonate_timer = nade_quick_cook_times[grenade:GetClass()]
+			if grenade:GetClass() == "weapon_ttt_smokegrenade" then
+				grenade.detonate_timer = 1
+			end
 			-- Make sure the grenade is ready instantly
 			timer.Simple(0.05, function()
 				if IsValid(ply) and ply:Alive() and IsValid(grenade) then
@@ -56,17 +60,6 @@ if SERVER then
 					timer.Simple(0.05, function()
 						if IsValid(ply) and ply:Alive() then
 							ply:ConCommand("-attack")
-							-- -- Switch back to previous weapon
-							-- timer.Simple(0.8, function()
-							-- 	if IsValid(ply) and ply:Alive() then
-							-- 		local prev_wep_class = player_previous_weapons[ply:SteamID()]
-							-- 		if prev_wep_class then
-							-- 			ply:SelectWeapon(prev_wep_class)
-							-- 			-- Clear the stored weapon
-							-- 			player_previous_weapons[ply:SteamID()] = nil
-							-- 		end
-							-- 	end
-							-- end)
 						end
 					end)
 				end
@@ -86,12 +79,5 @@ if SERVER then
 		quick_throw_grenade(ply)
 	end)
 	
-	-- Clean up when player disconnects
-	hook.Add("PlayerDisconnected", "CleanupQuickGrenadeData", function(ply)
-		if player_previous_weapons[ply:SteamID()] then
-			player_previous_weapons[ply:SteamID()] = nil
-		end
-	end)
-
 
 end
