@@ -133,7 +133,6 @@ if SERVER then
 			"weapon_ttt_aug",
 			"weapon_ttt_deaglev2",
 			"weapon_ttt_famas",
-			"weapon_ttt_frag",
 			"weapon_ttt_g3sg1",
 			"weapon_ttt_glock",
 			"weapon_ttt_homebat",

@@ -67,7 +67,13 @@ if SERVER then
 		if !ply:IsAdmin() then return end
 
 		if args[1] == "on" then
-			ffa_on(ply:GetActiveWeapon():GetClass())
+			-- if player is holding a valid weapon...
+			if IsValid(ply:GetActiveWeapon()) then
+				ffa_on(ply:GetActiveWeapon():GetClass())
+			else
+				ffa_on("weapon_zm_mac10")
+			end
+
 		elseif args[1] == "off" then
 			ffa_off()
 		else
